@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ar" class="">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Elmowared - Smart B2B marketplace for sourcing, RFQs, products, and supplier discovery in MENA."
+    />
+    <title>Elmowared | Smart B2B Marketplace</title>
+    <script>
+      (function() {
+        const dark = localStorage.getItem('darkMode');
+        if (dark === 'true' || (!dark && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
