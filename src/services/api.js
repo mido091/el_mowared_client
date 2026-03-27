@@ -4,7 +4,7 @@ import { getLocalizedErrorMessage, handleError, normalizeError } from '@/utils/e
 import { useNotificationStore } from '@/stores/notificationStore';
 import { logger } from '@/utils/logger';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const baseURL = import.meta.env.VITE_API_URL || 'https://el-mowared-server.vercel.app/api/v1';
 
 const api = axios.create({
   baseURL,
