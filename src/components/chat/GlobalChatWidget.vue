@@ -2,7 +2,7 @@
   <div class="fixed bottom-6 right-6 rtl:left-6 rtl:right-auto z-[999] pointer-events-none">
     <div
       v-if="isOpen"
-      class="absolute bottom-16 right-0 rtl:left-0 rtl:right-auto w-[380px] max-w-[calc(100vw-1.5rem)] h-[560px] bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col pointer-events-auto"
+      class="absolute bottom-16 right-0 rtl:left-0 rtl:right-auto w-[320px] h-[440px] sm:w-[380px] sm:h-[560px] max-w-[calc(100vw-1.5rem)] bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col pointer-events-auto"
     >
       <div class="relative overflow-hidden bg-[linear-gradient(135deg,#1e293b_0%,hsl(var(--primary))_100%)] px-5 py-4 text-white">
         <div class="absolute inset-0 opacity-15 bg-[radial-gradient(circle_at_top_left,white_0,transparent_48%)]"></div>
