@@ -20,6 +20,13 @@
             <Star class="h-5 w-5 fill-amber-400 text-amber-400" />
             {{ averageDisplay }}
           </div>
+          <div class="mt-3">
+            <StarRating
+              :model-value="Number(summary.averageRating || 0)"
+              :count="summary.totalReviews || 0"
+              :show-count="(summary.totalReviews || 0) > 0"
+            />
+          </div>
         </div>
 
         <div class="rounded-[1.4rem] border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-950/60">
@@ -200,6 +207,7 @@ import api from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { getApiCollection, getApiData, getApiMessage } from '@/utils/apiResponse';
+import StarRating from '@/components/ui/StarRating.vue';
 
 const props = defineProps({
   type: {
