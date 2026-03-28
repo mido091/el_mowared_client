@@ -1,27 +1,92 @@
 <template>
-  <header class="layer-header sticky top-0 w-full bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
-    <!-- Top Bar -->
-    <div class="hidden md:block bg-secondary text-secondary-foreground/80 text-[11px] py-1.5">
+  <header class="layer-header sticky top-0 w-full border-b border-border bg-card/95 shadow-sm backdrop-blur-md">
+    <div class="hidden bg-secondary py-1.5 text-[11px] text-secondary-foreground/80 md:block">
       <div class="container-wide flex items-center justify-between">
-        <span>{{ settingsStore.siteName }} — {{ t('common.b2b_marketplace') }}</span>
+        <span>{{ settingsStore.siteName }} - {{ t('common.b2b_marketplace') }}</span>
         <div class="flex items-center gap-4">
-          <button @click="toggleLang" class="hover:text-primary transition-colors font-semibold">
-            {{ locale === 'ar' ? 'English' : 'عربي' }}
+          <button @click="toggleLang" class="font-semibold transition-colors hover:text-primary">
+            {{ locale === 'ar' ? 'English' : 'العربية' }}
           </button>
-          <button @click="uiStore.toggleDark()" class="hover:text-primary transition-colors">
-            <Moon v-if="!uiStore.isDark" class="w-3.5 h-3.5" />
-            <Sun  v-else                 class="w-3.5 h-3.5" />
+          <button @click="uiStore.toggleDark()" class="transition-colors hover:text-primary">
+            <Moon v-if="!uiStore.isDark" class="h-3.5 w-3.5" />
+            <Sun v-else class="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Main Nav -->
-    <div class="container-wide flex items-center h-16 gap-4">
-      <!-- Logo -->
-      <router-link to="/" class="flex items-center gap-2 shrink-0 me-4 group">
-        <div v-if="!settingsStore.activeLogo" class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm group-hover:bg-primary/20 transition-all">
-          <span class="text-primary font-black text-xs tracking-tighter">{{ settingsStore.siteName.substring(0,2).toUpperCase() }}</span>
+    <div class="container-wide flex h-16 items-center justify-between gap-3 md:hidden">
+      <button @click="toggleMobileMenu" class="btn-ghost btn-icon shrink-0" aria-label="Menu">
+        <Menu class="h-5 w-5" />
+      </button>
+
+      <router-link to="/" class="group flex min-w-0 flex-1 items-center justify-center px-2">
+        <div
+          v-if="!settingsStore.activeLogo"
+          class="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 shadow-sm"
+        >
+          <span class="text-xs font-black tracking-tighter text-primary">
+            {{ settingsStore.siteName.substring(0, 2).toUpperCase() }}
+          </span>
+        </div>
+        <AppImage
+          v-else
+          :src="settingsStore.activeLogo"
+          :alt="settingsStore.siteName"
+          :width="110"
+          :height="36"
+          loading="eager"
+          decoding="async"
+          sizes="110px"
+          img-class="h-9 w-auto max-w-[120px] object-contain transition-transform group-hover:scale-105"
+        />
+      </router-link>
+
+      <div class="flex shrink-0 items-center gap-1">
+        <router-link
+          v-if="authStore.isAuthenticated"
+          to="/chat"
+          class="btn-ghost btn-icon relative"
+          :title="t('chat.title')"
+        >
+          <MessageSquare class="h-5 w-5" />
+          <span
+            v-if="chatStore.unreadCount > 0"
+            class="absolute top-1 end-1 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 ring-2 ring-card"
+          />
+        </router-link>
+
+        <router-link
+          v-if="authStore.isAuthenticated"
+          :to="mobileProfileRoute"
+          class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/30 shadow-sm transition hover:border-primary/30 hover:bg-muted"
+          :title="t('profile.title')"
+        >
+          <AppImage
+            v-if="authStore.user?.avatar"
+            :src="authStore.user.avatar"
+            :alt="authStore.userName"
+            :width="40"
+            :height="40"
+            sizes="40px"
+            img-class="h-full w-full object-cover"
+          />
+          <span v-else class="text-sm font-black text-primary">
+            {{ (authStore.userName || 'U').charAt(0) }}
+          </span>
+        </router-link>
+      </div>
+    </div>
+
+    <div class="container-wide hidden h-16 items-center gap-2 md:flex md:gap-4">
+      <router-link to="/" class="group me-2 flex shrink-0 items-center gap-2 md:me-4">
+        <div
+          v-if="!settingsStore.activeLogo"
+          class="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 shadow-sm transition-all group-hover:bg-primary/20"
+        >
+          <span class="text-xs font-black tracking-tighter text-primary">
+            {{ settingsStore.siteName.substring(0, 2).toUpperCase() }}
+          </span>
         </div>
         <AppImage
           v-else
@@ -34,22 +99,20 @@
           sizes="120px"
           img-class="h-10 w-auto object-contain transition-transform group-hover:scale-105"
         />
-        
-        <span class="hidden sm:block font-black text-xl text-primary dark:text-foreground tracking-tighter uppercase">
+        <span class="hidden text-xl font-black uppercase tracking-tighter text-primary dark:text-foreground sm:block">
           {{ settingsStore.siteName }}
         </span>
       </router-link>
 
-      <!-- Search -->
-      <div ref="desktopSearchRef" class="flex-1 max-w-xl relative hidden md:flex">
+      <div ref="desktopSearchRef" class="relative hidden max-w-xl flex-1 md:flex">
         <div class="relative w-full">
-          <Search class="absolute start-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Search class="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             v-model="searchQuery"
             @focus="handleSearchFocus"
             @keydown.enter="doSearch"
             :placeholder="t('common.searchPlaceholder')"
-            class="form-input ps-10 pe-4 h-10 text-sm"
+            class="form-input h-10 pe-4 ps-10 text-sm"
           />
 
           <transition name="search-pop">
@@ -63,7 +126,7 @@
 
               <div v-else-if="hasSuggestions" class="max-h-[28rem] overflow-y-auto p-3 custom-scrollbar">
                 <section v-if="productSuggestions.length" class="space-y-2">
-                  <p class="px-3 pt-2 ui-kicker">{{ labels.products }}</p>
+                  <p class="ui-kicker px-3 pt-2">{{ labels.products }}</p>
                   <button
                     v-for="product in productSuggestions"
                     :key="`desktop-product-${product.id}`"
@@ -81,8 +144,12 @@
                   </button>
                 </section>
 
-                <section v-if="vendorSuggestions.length" class="space-y-2" :class="productSuggestions.length ? 'mt-3 border-t border-border/60 pt-3' : ''">
-                  <p class="px-3 pt-2 ui-kicker">{{ labels.vendors }}</p>
+                <section
+                  v-if="vendorSuggestions.length"
+                  class="space-y-2"
+                  :class="productSuggestions.length ? 'mt-3 border-t border-border/60 pt-3' : ''"
+                >
+                  <p class="ui-kicker px-3 pt-2">{{ labels.vendors }}</p>
                   <button
                     v-for="vendor in vendorSuggestions"
                     :key="`desktop-vendor-${vendor.id}`"
@@ -120,42 +187,32 @@
         </div>
       </div>
 
-      <!-- Right Actions -->
-      <div class="flex items-center gap-1 ms-auto">
-        <!-- Mobile lang -->
-        <button @click="toggleLang" class="btn-ghost btn-icon md:hidden">
-          <Languages class="w-5 h-5" />
-        </button>
-
-        <!-- Dark mode mobile -->
-        <button @click="uiStore.toggleDark()" class="btn-ghost btn-icon md:hidden">
-          <Moon v-if="!uiStore.isDark" class="w-5 h-5" />
-          <Sun  v-else                 class="w-5 h-5" />
-        </button>
-
-        <!-- Compare -->
+      <div class="ms-auto flex items-center gap-0.5 sm:gap-1">
         <router-link
           v-if="comparisonStore.count > 0"
           to="/compare"
           class="btn-ghost btn-icon relative"
           :title="t('products.compare')"
         >
-          <BarChart2 class="w-5 h-5" />
-          <span class="absolute -top-0.5 -end-0.5 w-4 h-4 bg-destructive text-white text-[9px] font-black rounded-full flex items-center justify-center">
+          <BarChart2 class="h-5 w-5" />
+          <span class="absolute -top-0.5 -end-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-black text-white">
             {{ comparisonStore.count }}
           </span>
         </router-link>
 
-        <!-- Messages -->
-        <router-link v-if="authStore.isAuthenticated" to="/chat" class="btn-ghost btn-icon relative" :title="t('chat.title')">
-          <MessageSquare class="w-5 h-5" />
+        <router-link
+          v-if="authStore.isAuthenticated"
+          to="/chat"
+          class="btn-ghost btn-icon relative"
+          :title="t('chat.title')"
+        >
+          <MessageSquare class="h-5 w-5" />
           <span
             v-if="chatStore.unreadCount > 0"
-            class="absolute top-1 end-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-card animate-pulse"
+            class="absolute top-1 end-1 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 ring-2 ring-card"
           />
         </router-link>
 
-        <!-- Auth Buttons / User Menu -->
         <template v-if="!authStore.isAuthenticated">
           <router-link to="/login" class="btn-outline btn-sm hidden sm:inline-flex">
             {{ t('auth.login') }}
@@ -166,46 +223,42 @@
         </template>
 
         <template v-else>
-          <UserDropdown />
+          <div class="hidden md:block">
+            <UserDropdown />
+          </div>
         </template>
 
         <router-link
           to="/rfq/post"
-          class="hidden md:inline-flex items-center justify-center rounded-[1.1rem] bg-[hsl(var(--primary))] px-4 py-2 text-sm font-black text-white shadow-[0_16px_40px_-24px_hsl(var(--primary))] transition hover:translate-y-[-1px] hover:shadow-[0_20px_48px_-24px_hsl(var(--primary))]"
+          class="hidden items-center justify-center rounded-[1.1rem] bg-[hsl(var(--primary))] px-4 py-2 text-sm font-black text-white shadow-[0_16px_40px_-24px_hsl(var(--primary))] transition hover:translate-y-[-1px] hover:shadow-[0_20px_48px_-24px_hsl(var(--primary))] md:inline-flex"
         >
           {{ t('rfq.postRfq') }}
         </router-link>
-
-        <!-- Mobile menu -->
-        <button @click="toggleMobileMenu" class="btn-ghost btn-icon md:hidden">
-          <Menu class="w-5 h-5" />
-        </button>
       </div>
     </div>
 
-    <!-- Category Nav Bar -->
-    <div class="hidden md:flex border-t border-border bg-card">
+    <div class="hidden border-t border-border bg-card md:flex">
       <div class="container-wide flex items-center gap-0">
         <button
           ref="megaButton"
           @click="toggleMegaMenu"
-          class="flex items-center gap-2 px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted/60 transition-all border-e border-border h-full"
+          class="flex h-full items-center gap-2 border-e border-border px-5 py-3 text-sm font-semibold text-foreground transition-all hover:bg-muted/60"
         >
-          <LayoutGrid class="w-4 h-4 text-secondary" />
+          <LayoutGrid class="h-4 w-4 text-secondary" />
           {{ t('home.my_markets') }}
-          <ChevronDown :class="['w-3.5 h-3.5 text-muted-foreground transition-transform', megaOpen ? 'rotate-180' : '']" />
+          <ChevronDown :class="['h-3.5 w-3.5 text-muted-foreground transition-transform', megaOpen ? 'rotate-180' : '']" />
         </button>
 
-        <nav class="flex items-center gap-0 overflow-x-auto custom-scrollbar flex-1">
+        <nav class="custom-scrollbar flex flex-1 items-center gap-0 overflow-x-auto">
           <router-link
             v-for="item in navLinks"
             :key="item.to"
             :to="item.to"
             :class="[
-              'px-4 py-3 text-sm font-medium transition-all whitespace-nowrap border-b-2',
-              isNavItemActive(item.to) 
-                ? 'text-secondary border-secondary' 
-                : 'text-muted-foreground border-transparent hover:text-secondary hover:bg-muted/40'
+              'whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-all',
+              isNavItemActive(item.to)
+                ? 'border-secondary text-secondary'
+                : 'border-transparent text-muted-foreground hover:bg-muted/40 hover:text-secondary'
             ]"
           >
             {{ item.label }}
@@ -214,52 +267,168 @@
       </div>
     </div>
 
-    <!-- Mega Menu -->
     <transition name="slide-down">
-      <MegaMenu 
-        v-if="megaOpen" 
+      <MegaMenu
+        v-if="megaOpen"
         :exclude-el="megaButton"
-        @close="megaOpen = false" 
+        @close="megaOpen = false"
       />
     </transition>
 
     <div
       v-if="mobileMenuOpen"
-      class="app-backdrop layer-backdrop top-16 md:hidden"
+      class="app-backdrop layer-backdrop top-[7.5rem] md:hidden"
       @click="mobileMenuOpen = false"
     ></div>
 
-    <!-- Mobile Nav -->
     <transition name="slide-down">
-      <div v-if="mobileMenuOpen" class="layer-mobile-nav relative md:hidden bg-card border-t border-border px-4 py-4 space-y-2 shadow-lg">
-        <router-link
-          to="/rfq/post"
-          @click="mobileMenuOpen = false"
-          class="mb-3 inline-flex w-full items-center justify-center rounded-[1.1rem] bg-[hsl(var(--primary))] px-4 py-3 text-sm font-black text-white shadow-[0_16px_40px_-24px_hsl(var(--primary))]"
-        >
-          {{ t('rfq.postRfq') }}
-        </router-link>
+      <div
+        v-if="mobileMenuOpen"
+        class="layer-mobile-nav relative border-t border-border bg-card px-4 py-4 shadow-lg md:hidden"
+      >
+        <div class="space-y-4">
+          <div
+            v-if="authStore.isAuthenticated"
+            class="flex items-center gap-3 rounded-[1.35rem] border border-border bg-muted/30 p-3"
+          >
+            <div class="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-primary/15 bg-primary/10 shadow-inner">
+              <AppImage
+                v-if="authStore.user?.avatar"
+                :src="authStore.user.avatar"
+                :alt="authStore.userName"
+                :width="48"
+                :height="48"
+                sizes="48px"
+                img-class="h-full w-full object-cover"
+              />
+              <span v-else class="text-base font-black text-primary">
+                {{ (authStore.userName || 'U').charAt(0) }}
+              </span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-black text-foreground">{{ authStore.userName }}</p>
+              <p class="truncate text-[11px] font-medium text-muted-foreground">{{ authStore.user?.email }}</p>
+            </div>
+            <router-link
+              :to="mobileProfileRoute"
+              @click="mobileMenuOpen = false"
+              class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition hover:border-primary/30 hover:text-primary"
+              :title="t('profile.title')"
+            >
+              <UserCircle2 class="h-4 w-4" />
+            </router-link>
+          </div>
 
-        <div ref="mobileSearchRef" class="relative mb-4">
-          <Search class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <router-link
+            to="/rfq/post"
+            @click="mobileMenuOpen = false"
+            class="inline-flex w-full items-center justify-center rounded-[1.1rem] bg-[hsl(var(--primary))] px-4 py-3 text-sm font-black text-white shadow-[0_16px_40px_-24px_hsl(var(--primary))]"
+          >
+            {{ t('rfq.postRfq') }}
+          </router-link>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              @click="toggleLang"
+              class="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 text-sm font-bold text-foreground transition hover:bg-muted"
+            >
+              <Languages class="h-4 w-4" />
+              <span>{{ locale === 'ar' ? 'English' : 'العربية' }}</span>
+            </button>
+            <button
+              type="button"
+              @click="uiStore.toggleDark()"
+              class="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 text-sm font-bold text-foreground transition hover:bg-muted"
+            >
+              <Moon v-if="!uiStore.isDark" class="h-4 w-4" />
+              <Sun v-else class="h-4 w-4" />
+              <span>{{ uiStore.isDark ? t('common.light', 'Light') : t('common.dark', 'Dark') }}</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <router-link
+              to="/products"
+              @click="mobileMenuOpen = false"
+              class="inline-flex h-11 items-center justify-center rounded-2xl border border-border bg-muted/40 px-4 text-sm font-bold text-foreground transition hover:bg-muted"
+            >
+              {{ t('nav.products') }}
+            </router-link>
+            <router-link
+              to="/products?filter=discounted"
+              @click="mobileMenuOpen = false"
+              class="inline-flex h-11 items-center justify-center rounded-2xl border border-border bg-muted/40 px-4 text-sm font-bold text-foreground transition hover:bg-muted"
+            >
+              {{ t('nav.current_offers') }}
+            </router-link>
+          </div>
+
+          <div v-if="authStore.isAuthenticated" class="grid grid-cols-2 gap-2">
+            <router-link
+              :to="mobileProfileRoute"
+              @click="mobileMenuOpen = false"
+              class="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 text-sm font-bold text-foreground transition hover:bg-muted"
+            >
+              <UserCircle2 class="h-4 w-4" />
+              <span>{{ t('profile.title') }}</span>
+            </router-link>
+            <router-link
+              v-if="authStore.user?.role !== 'user'"
+              :to="dashboardRoute"
+              @click="mobileMenuOpen = false"
+              class="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 text-sm font-bold text-foreground transition hover:bg-muted"
+            >
+              <LayoutDashboard class="h-4 w-4" />
+              <span>{{ t('dashboard.dashboard_label') }}</span>
+            </router-link>
+          </div>
+
+          <template v-if="!authStore.isAuthenticated">
+            <div class="grid grid-cols-1 gap-2">
+              <router-link to="/login" @click="mobileMenuOpen = false" class="btn-outline btn w-full text-center">
+                {{ t('auth.login') }}
+              </router-link>
+              <router-link to="/register" @click="mobileMenuOpen = false" class="btn-secondary btn w-full text-center">
+                {{ t('auth.register') }}
+              </router-link>
+            </div>
+          </template>
+          <template v-else>
+            <button
+              @click="logout"
+              class="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 text-sm font-bold text-destructive transition hover:bg-destructive/10"
+            >
+              <LogOut class="h-4 w-4" />
+              <span>{{ t('auth.sign_out') }}</span>
+            </button>
+          </template>
+        </div>
+      </div>
+    </transition>
+
+    <div v-if="!mobileMenuOpen" class="border-t border-border bg-card md:hidden">
+      <div class="container-wide pb-3 pt-3">
+        <div ref="mobileSearchRef" class="relative">
+          <Search class="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             v-model="searchQuery"
             @focus="handleSearchFocus"
             @keydown.enter="doSearch"
             :placeholder="t('common.searchPlaceholder')"
-            class="form-input ps-9 h-10 text-sm"
+            class="form-input h-11 ps-9 text-sm"
           />
 
           <transition name="search-pop">
             <div
               v-if="showMobileSuggestions"
-              class="layer-dropdown absolute inset-x-0 top-full mt-3 overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/95 shadow-2xl backdrop-blur"
+              class="layer-dropdown absolute inset-x-0 top-full z-[205] mt-3 overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/95 shadow-2xl backdrop-blur"
             >
               <div v-if="isSearching" class="space-y-3 p-4">
                 <div v-for="i in 2" :key="`mobile-skeleton-${i}`" class="h-14 animate-pulse rounded-2xl bg-muted/40"></div>
               </div>
 
-              <div v-else-if="hasSuggestions" class="max-h-80 overflow-y-auto p-3 custom-scrollbar">
+              <div v-else-if="hasSuggestions" class="custom-scrollbar max-h-80 overflow-y-auto p-3">
                 <button
                   v-for="item in combinedSuggestions"
                   :key="`${item.type}-${item.id}`"
@@ -267,7 +436,10 @@
                   @click="item.type === 'product' ? goToProduct(item) : goToVendor(item.id)"
                   class="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-start transition-colors hover:bg-muted/40"
                 >
-                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border" :class="item.type === 'product' ? 'border-primary/15 bg-primary/5' : 'border-secondary/15 bg-secondary/5'">
+                  <div
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border"
+                    :class="item.type === 'product' ? 'border-primary/15 bg-primary/5' : 'border-secondary/15 bg-secondary/5'"
+                  >
                     <LayoutGrid v-if="item.type === 'product'" class="h-4 w-4 text-primary" />
                     <AppImage
                       v-else-if="item.logo"
@@ -294,33 +466,25 @@
             </div>
           </transition>
         </div>
-        <template v-if="!authStore.isAuthenticated">
-          <router-link to="/login"    @click="mobileMenuOpen=false" class="btn-outline w-full btn text-center">{{ t('auth.login') }}</router-link>
-          <router-link to="/register" @click="mobileMenuOpen=false" class="btn-secondary w-full btn text-center">{{ t('auth.register') }}</router-link>
-        </template>
-        <template v-else>
-          <router-link v-if="authStore.user?.role !== 'user'" :to="dashboardRoute" @click="mobileMenuOpen=false" class="btn-outline w-full btn text-center">{{ t('dashboard.dashboard_label') }}</router-link>
-          <button @click="logout" class="btn-danger w-full btn text-center">{{ t('auth.sign_out') }}</button>
-        </template>
       </div>
-    </transition>
+    </div>
   </header>
 </template>
 
 <script setup>
 import { ref, computed, defineAsyncComponent, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useI18n       } from 'vue-i18n';
+import { useI18n } from 'vue-i18n';
 import {
   Search, BarChart2, Menu, ChevronDown,
   Moon, Sun, Languages, LayoutGrid,
-  MessageSquare
+  MessageSquare, UserCircle2, LayoutDashboard, LogOut
 } from 'lucide-vue-next';
-import { useAuthStore       } from '@/stores/auth';
-import { useUiStore         } from '@/stores/ui';
+import { useAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/ui';
 import { useComparisonStore } from '@/stores/comparison';
-import { useSettingsStore   } from '@/stores/settings';
-import { useChatStore       } from '@/stores/chat';
+import { useSettingsStore } from '@/stores/settings';
+import { useChatStore } from '@/stores/chat';
 import api from '@/services/api';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
 import AppImage from '@/components/ui/AppImage.vue';
@@ -331,16 +495,16 @@ const MegaMenu = defineAsyncComponent(() => import('@/components/ui/MegaMenu.vue
 
 const { t, locale } = useI18n();
 const router = useRouter();
-const route  = useRoute();
-const authStore       = useAuthStore();
-const uiStore         = useUiStore();
+const route = useRoute();
+const authStore = useAuthStore();
+const uiStore = useUiStore();
 const comparisonStore = useComparisonStore();
-const settingsStore   = useSettingsStore();
-const chatStore       = useChatStore();
+const settingsStore = useSettingsStore();
+const chatStore = useChatStore();
 
-const searchQuery   = ref('');
-const megaOpen      = ref(false);
-const megaButton    = ref(null);
+const searchQuery = ref('');
+const megaOpen = ref(false);
+const megaButton = ref(null);
 const mobileMenuOpen = ref(false);
 const desktopSearchRef = ref(null);
 const mobileSearchRef = ref(null);
@@ -351,8 +515,8 @@ const searchOpen = ref(false);
 let searchTimer = null;
 
 const navLinks = computed(() => [
-  { to: '/products',          label: t('nav.products') },
-  { to: '/products?filter=discounted', label: t('nav.current_offers') },
+  { to: '/products', label: t('nav.products') },
+  { to: '/products?filter=discounted', label: t('nav.current_offers') }
 ]);
 
 const labels = computed(() => ({
@@ -368,7 +532,7 @@ const labels = computed(() => ({
 
 const normalizedQuery = computed(() => normalizeSearchText(searchQuery.value));
 const showDesktopSuggestions = computed(() => searchOpen.value && normalizedQuery.value.length >= 1);
-const showMobileSuggestions = computed(() => mobileMenuOpen.value && searchOpen.value && normalizedQuery.value.length >= 1);
+const showMobileSuggestions = computed(() => searchOpen.value && normalizedQuery.value.length >= 1);
 const hasSuggestions = computed(() => productSuggestions.value.length > 0 || vendorSuggestions.value.length > 0);
 const combinedSuggestions = computed(() => ([
   ...productSuggestions.value.map((item) => ({ ...item, type: 'product' })),
@@ -377,12 +541,16 @@ const combinedSuggestions = computed(() => ([
 
 const dashboardRoute = computed(() => {
   const role = authStore.user?.role;
-  if (role === 'mowared')  return '/dashboard/vendor';
-  if (role === 'owner')    return '/dashboard/owner';
-  if (role === 'admin')    return '/dashboard/admin';
+  if (role === 'mowared') return '/dashboard/vendor';
+  if (role === 'owner') return '/dashboard/owner';
+  if (role === 'admin') return '/dashboard/admin';
   if (role === 'marketer') return '/dashboard/marketer';
-  return '/'; // Default to home for regular users (no dashboard)
+  return '/';
 });
+
+const mobileProfileRoute = computed(() => (
+  `${authStore.user?.role || ''}`.toLowerCase() === 'user' ? '/profile' : '/dashboard/profile'
+));
 
 const toggleLang = () => {
   const newLang = locale.value === 'ar' ? 'en' : 'ar';
@@ -390,14 +558,15 @@ const toggleLang = () => {
   localStorage.setItem('locale', newLang);
   document.documentElement.setAttribute('dir', newLang === 'ar' ? 'rtl' : 'ltr');
   document.documentElement.setAttribute('lang', newLang);
+  closeSearchSuggestions();
 };
 
 const toggleMobileMenu = () => {
   mobileMenuOpen.value = !mobileMenuOpen.value;
   if (mobileMenuOpen.value) {
     megaOpen.value = false;
-    closeSearchSuggestions();
   }
+  closeSearchSuggestions();
 };
 
 const toggleMegaMenu = () => {
@@ -503,10 +672,8 @@ const goToVendor = (vendorId) => {
 
 const isNavItemActive = (to) => {
   if (to === '/products') {
-    // Base products link is active only if there's no category query
     return route.path === '/products' && !route.query.category;
   }
-  // For other links (like categories or RFQ), match full path or specific query
   return route.fullPath === to || (route.path === to && Object.keys(route.query).length === 0);
 };
 

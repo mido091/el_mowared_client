@@ -61,13 +61,6 @@
         {{ productTitle }}
       </h3>
 
-      <StarRating
-        v-if="product.avg_rating"
-        :modelValue="parseFloat(product.avg_rating)"
-        :count="product.review_count"
-        class="mb-1.5"
-      />
-
       <div class="border-t border-border/60 pt-2">
         <p class="mb-1 text-[10px] font-bold" :class="stockTone">
           {{ stockLabel }}
@@ -108,7 +101,6 @@ import { BarChart2, ArrowRight } from 'lucide-vue-next';
 import { useI18n } from 'vue-i18n';
 import { useComparisonStore } from '@/stores/comparison';
 import VendorBadge from '@/components/ui/VendorBadge.vue';
-import StarRating from '@/components/ui/StarRating.vue';
 import AppImage from '@/components/ui/AppImage.vue';
 import { formatEGPCurrency } from '@/utils/currency';
 import { buildProductPath } from '@/utils/routes';
