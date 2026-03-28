@@ -45,7 +45,7 @@
        <div v-if="loading" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div v-for="i in 4" :key="i" class="h-48 rounded-[2rem] bg-muted/20 animate-pulse border border-border/50"></div>
        </div>
-       <div v-else-if="openRfqs.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div v-else-if="filteredRfqs.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div v-for="rfq in filteredRfqs" :key="rfq.id" class="group relative bg-card/40 backdrop-blur-sm border border-border/50 rounded-[2rem] p-8 hover:border-primary/30 transition-all duration-500 shadow-sm hover:shadow-xl hover:shadow-primary/5">
              <div class="flex items-start justify-between mb-6">
                 <div class="space-y-1">
@@ -186,6 +186,7 @@
 
 <script setup>
 import { ref, onMounted, reactive, computed, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { 
   ArrowRight, ArrowUpRight, Clock, CheckCircle, XCircle, Gavel, Send, Loader2, Activity, Filter 
@@ -194,6 +195,7 @@ import api from '@/services/api';
 import { formatEGPCurrency } from '@/utils/currency';
 import { useUiStore } from '@/stores/ui';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useRfqStore } from '@/stores/rfqStore';
 import DataTable from '@/components/ui/DataTable.vue';
 import BaseModal from '@/components/ui/BaseModal.vue';
 import BaseInput from '@/components/ui/BaseInput.vue';
@@ -203,6 +205,8 @@ import EmptyState from '@/components/ui/EmptyState.vue';
 const { t, locale } = useI18n();
 const uiStore = useUiStore();
 const categoryStore = useCategoryStore();
+const rfqStore = useRfqStore();
+const { loading: rfqLoading } = storeToRefs(rfqStore);
 
 const activeTab = ref('browse');
 const loading = ref(true);
@@ -210,7 +214,6 @@ const submitting = ref(false);
 const showQuoteModal = ref(false);
 const selectedRfq = ref(null);
 
-const openRfqs = ref([]);
 const myOffers = ref([]);
 const vendorCategoryIds = ref([]);
 const categoryFilter = ref(null);
@@ -235,8 +238,9 @@ const allowedCategories = computed(() => {
 });
 
 const filteredRfqs = computed(() => {
-  if (!categoryFilter.value) return openRfqs.value;
-  return openRfqs.value.filter(r => r.category_id === categoryFilter.value);
+  const source = rfqStore.allLeads || [];
+  if (!categoryFilter.value) return source;
+  return source.filter(r => r.category_id === categoryFilter.value);
 });
 
 const formatCurrency = (val) => formatEGPCurrency(val, locale.value);
@@ -247,9 +251,7 @@ const fetchData = async () => {
   loading.value = true;
   try {
     if (activeTab.value === 'browse') {
-       const res = await api.get('/rfq');
-       // api.js interceptor already unwraps response.data
-       openRfqs.value = Array.isArray(res) ? res : (res?.data ?? []);
+       await rfqStore.fetchFeed({ mode: 'revalidate' });
     } else {
        const res = await api.get('/rfq/my-offers');
        myOffers.value = Array.isArray(res) ? res : (res?.data ?? []);
@@ -285,9 +287,15 @@ const submitQuote = async () => {
 
 watch(activeTab, fetchData);
 
+watch(rfqLoading, (value) => {
+  if (activeTab.value === 'browse') {
+    loading.value = value;
+  }
+});
+
 onMounted(async () => {
   try {
-    await categoryStore.fetchCategories();
+    await categoryStore.fetchCategories({ mode: 'revalidate' });
     const profileRes = await api.get('/vendor/me');
     // api.js interceptor already unwraps response.data
     const vendorData = profileRes?.vendor || profileRes;

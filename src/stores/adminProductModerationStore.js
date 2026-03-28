@@ -2,6 +2,15 @@ import { defineStore } from 'pinia';
 import api from '@/services/api';
 import { getApiData } from '@/utils/apiResponse';
 import { normalizeError } from '@/utils/errorHandler';
+import { useCache } from '@/composables/useCache';
+import { createDomainSync } from '@/utils/domainSync';
+
+const PRODUCT_STALE_MS = 1000 * 60 * 5;
+const productSync = createDomainSync('products');
+
+let activeProductsFetch = null;
+let activeSummaryFetch = null;
+let activeProductsFetchKey = '';
 
 export const useAdminProductModerationStore = defineStore('adminProductModeration', {
   state: () => ({
@@ -13,6 +22,10 @@ export const useAdminProductModerationStore = defineStore('adminProductModeratio
     activeTab: 'PENDING',
     total: 0,
     productDetails: {},
+    lastFetched: null,
+    summaryLastFetched: null,
+    revision: 0,
+    syncReady: false,
   }),
 
   getters: {
@@ -60,43 +73,143 @@ export const useAdminProductModerationStore = defineStore('adminProductModeratio
   },
 
   actions: {
-    async fetchSummary() {
+    ensureSync() {
+      if (this.syncReady || typeof window === 'undefined') return;
+
+      productSync.ensure();
+      productSync.subscribe((payload = {}) => {
+        const incomingRevision = Number(payload.revision || 0);
+        if (incomingRevision && incomingRevision <= Number(this.revision || 0)) return;
+        this.revision = incomingRevision;
+        this.lastFetched = null;
+        this.summaryLastFetched = null;
+        Promise.allSettled([
+          this.fetchProducts(this.activeTab, { mode: 'fresh', silent: true }),
+          this.fetchSummary({ mode: 'fresh' }),
+        ]);
+      });
+
+      const syncFromRevision = () => {
+        const storedRevision = productSync.getStoredRevision();
+        if (storedRevision > Number(this.revision || 0)) {
+          this.revision = storedRevision;
+          this.lastFetched = null;
+          this.summaryLastFetched = null;
+          Promise.allSettled([
+            this.fetchProducts(this.activeTab, { mode: 'fresh', silent: true }),
+            this.fetchSummary({ mode: 'fresh' }),
+          ]);
+        }
+      };
+
+      window.addEventListener('focus', syncFromRevision);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') syncFromRevision();
+      });
+
+      this.syncReady = true;
+      syncFromRevision();
+    },
+
+    invalidateProducts(reason = 'updated') {
+      this.lastFetched = null;
+      this.summaryLastFetched = null;
+      this.revision = productSync.publish(reason);
+    },
+
+    async fetchSummary(options = {}) {
+      this.ensureSync();
+      const mode = options.mode || 'cached';
+      const hasData = this.summaryProducts.length > 0;
+      const isFreshEnough = hasData && this.summaryLastFetched && Date.now() - this.summaryLastFetched < PRODUCT_STALE_MS;
+
+      if (mode === 'cached' && isFreshEnough) return this.summaryProducts;
+      if (mode === 'revalidate' && hasData) {
+        this.fetchSummary({ mode: 'fresh' }).catch(() => {});
+        return this.summaryProducts;
+      }
+
+      if (activeSummaryFetch) return activeSummaryFetch;
+
+      activeSummaryFetch = (async () => {
       try {
         const response = await api.get('/admin/products', {
-          params: { limit: 500, page: 1 }
+          params: {
+            limit: 500,
+            page: 1,
+            ...((mode === 'fresh' || (mode === 'revalidate' && !hasData)) ? { fresh: 1, _: Date.now() } : {}),
+          }
         });
         const data = getApiData(response) || {};
         this.summaryProducts = data.items || data.products || [];
+        this.summaryLastFetched = Date.now();
+        this.revision = Math.max(this.revision || 0, this.summaryLastFetched);
+        return this.summaryProducts;
       } catch (error) {
         console.error('Failed to fetch moderation summary', error);
+        throw error;
+      } finally {
+        activeSummaryFetch = null;
       }
+      })();
+
+      return activeSummaryFetch;
     },
 
-    async fetchProducts(tab = this.activeTab) {
-      this.loading = true;
+    async fetchProducts(tab = this.activeTab, options = {}) {
+      this.ensureSync();
+      const mode = options.mode || 'cached';
+      const silent = Boolean(options.silent);
+      const hasData = this.products.length > 0 && tab === this.activeTab;
+      const isFreshEnough = hasData && this.lastFetched && Date.now() - this.lastFetched < PRODUCT_STALE_MS && tab === this.activeTab;
+
+      if (mode === 'cached' && isFreshEnough) return this.products;
+      if (mode === 'revalidate' && hasData) {
+        this.fetchProducts(tab, { mode: 'fresh', silent: true }).catch(() => {});
+        return this.products;
+      }
+
+      if (!silent) this.loading = true;
       this.error = null;
       this.activeTab = tab;
 
-      try {
-        const params = { limit: 100, page: 1 };
-        let endpoint = '/admin/products';
+      const fetchKey = JSON.stringify({ tab, mode });
+      if (activeProductsFetch && activeProductsFetchKey === fetchKey) return activeProductsFetch;
 
-        if (tab === 'PENDING') {
-          endpoint = '/admin/products/pending';
-        } else {
-          params.lifecycleStatus = tab;
+      activeProductsFetch = (async () => {
+        try {
+          activeProductsFetchKey = fetchKey;
+          const params = { limit: 100, page: 1 };
+          let endpoint = '/admin/products';
+
+          if (tab === 'PENDING') {
+            endpoint = '/admin/products/pending';
+          } else {
+            params.lifecycleStatus = tab;
+          }
+          if (mode === 'fresh' || (mode === 'revalidate' && !hasData)) {
+            params.fresh = 1;
+            params._ = Date.now();
+          }
+
+          const response = await api.get(endpoint, { params });
+          const data = getApiData(response) || {};
+          this.products = data.items || data.products || [];
+          this.total = data.pagination?.totalItems || data.total || this.products.length;
+          this.lastFetched = Date.now();
+          this.revision = Math.max(this.revision || 0, this.lastFetched);
+          return this.products;
+        } catch (error) {
+          this.error = normalizeError(error).message;
+          throw error;
+        } finally {
+          if (!silent) this.loading = false;
+          activeProductsFetch = null;
+          activeProductsFetchKey = '';
         }
+      })();
 
-        const response = await api.get(endpoint, { params });
-        const data = getApiData(response) || {};
-        this.products = data.items || data.products || [];
-        this.total = data.pagination?.totalItems || data.total || this.products.length;
-      } catch (error) {
-        this.error = normalizeError(error).message;
-        throw error;
-      } finally {
-        this.loading = false;
-      }
+      return activeProductsFetch;
     },
 
     async fetchProductDetail(productId) {
@@ -116,6 +229,7 @@ export const useAdminProductModerationStore = defineStore('adminProductModeratio
     },
 
     async reviewProduct({ productId, status, rejection_reason }) {
+      const { clearCache } = useCache();
       const previousProducts = [...this.products];
       const previousSummary = [...this.summaryProducts];
       const normalizedStatus = `${status}`.toUpperCase();
@@ -146,6 +260,7 @@ export const useAdminProductModerationStore = defineStore('adminProductModeratio
 
         const response = await api.put(`/admin/products/${productId}/status`, payload);
         const updated = getApiData(response);
+        clearCache();
 
         this.productDetails[productId] = updated;
 
@@ -156,6 +271,12 @@ export const useAdminProductModerationStore = defineStore('adminProductModeratio
               : product
           ));
         }
+
+        await this.fetchSummary();
+        if (this.activeTab === 'PENDING') {
+          await this.fetchProducts(this.activeTab);
+        }
+        this.invalidateProducts(`review-${normalizedStatus.toLowerCase()}`);
 
         return updated;
       } catch (error) {

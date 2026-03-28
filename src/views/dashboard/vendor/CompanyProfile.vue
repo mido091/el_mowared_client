@@ -61,11 +61,11 @@
             <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">{{ sectionsTitle }}</p>
             <div class="mt-3 flex flex-wrap gap-2">
               <span
-                v-for="category in categories"
+                v-for="category in displayCategories"
                 :key="category.id || category.name"
                 class="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary"
               >
-                {{ category.name || category.name_ar || category.name_en }}
+                {{ category.name }}
               </span>
               <span v-if="!categories.length" class="text-sm text-muted-foreground">{{ noDataLabel }}</span>
             </div>
@@ -79,18 +79,35 @@
 <script setup>
 import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useCategoryStore } from '@/stores/categoryStore';
 import { useVendorProfileStore } from '@/stores/vendorProfileStore';
 
 const { locale } = useI18n();
 const profileStore = useVendorProfileStore();
+const categoryStore = useCategoryStore();
 
 const company = computed(() => profileStore.company || {});
 const categories = computed(() => Array.isArray(company.value.categories) ? company.value.categories : []);
+const displayCategories = computed(() =>
+  categories.value
+    .map((category) => {
+      const liveCategory = category?.id ? categoryStore.getCategoryById(Number(category.id)) : null;
+      if (category?.id && categoryStore.lastFetched && !liveCategory) {
+        return null;
+      }
+      const source = liveCategory || category;
+      return {
+        id: category?.id || liveCategory?.id || null,
+        name: categoryStore.localizedCategoryName(source, locale.value) || source?.name || '',
+      };
+    })
+    .filter((category) => category?.name)
+);
 const logo = computed(() => company.value.logo || company.value.logo_url || '');
 const companyName = computed(() => company.value.company_name || company.value.company_name_ar || company.value.company_name_en || (locale.value === 'ar' ? 'شركة المورد' : 'Vendor company'));
 const initials = computed(() => companyName.value.slice(0, 2).toUpperCase());
 const companyBio = computed(() => company.value.about || company.value.bio_ar || company.value.bio_en || (locale.value === 'ar' ? 'لا يوجد وصف متاح حتى الآن.' : 'No company description available yet.'));
-const categoriesCount = computed(() => categories.value.length);
+const categoriesCount = computed(() => displayCategories.value.length);
 const rating = computed(() => Number(profileStore.verification.rating || 0).toFixed(1));
 
 const headerLabel = computed(() => (locale.value === 'ar' ? 'ملف الشركة' : 'Company profile'));
@@ -117,5 +134,10 @@ const verificationText = computed(() => {
   return 'Account under review';
 });
 
-onMounted(profileStore.fetchProfile);
+onMounted(async () => {
+  await Promise.allSettled([
+    profileStore.fetchProfile(),
+    categoryStore.fetchCategories({ mode: 'revalidate' }),
+  ]);
+});
 </script>

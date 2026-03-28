@@ -404,7 +404,7 @@ async function submitForm() {
 
 onMounted(async () => {
   document.addEventListener('click', handleOutsideClick, true);
-  await categoryStore.fetchCategories(true);
+  await categoryStore.fetchCategories({ mode: 'revalidate' });
 });
 
 onBeforeUnmount(() => {

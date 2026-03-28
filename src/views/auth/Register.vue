@@ -204,8 +204,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { User, Building2, Eye, EyeOff, AlertTriangle, ArrowRight, Lock, Phone, Mail, MapPin } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
-import api from '@/services/api';
-import { getApiCollection } from '@/utils/apiResponse';
+import { useCategoryStore } from '@/stores/categoryStore';
 import CategoryMultiSelect from '@/components/ui/CategoryMultiSelect.vue';
 import OtpModal from '@/components/auth/OtpModal.vue';
 
@@ -216,10 +215,10 @@ import { resolveLocalizedText, toLocalizedMessage } from '@/utils/localizedText'
 const { t, locale } = useI18n();
 const router = useRouter();
 const authStore = useAuthStore();
+const categoryStore = useCategoryStore();
 
 const activeTab = ref('user');
 const showPass  = ref(false);
-const categories = ref([]);
 const showSuccessModal = ref(false);
 const showOtpModal = ref(false);
 const registrationEmail = ref('');
@@ -264,8 +263,7 @@ const clearVendorError = (field) => {
 
 onMounted(async () => {
   try {
-    const res = await api.get('/products/categories');
-    categories.value = getApiCollection(res, ['categories', 'items']);
+    await categoryStore.fetchCategories({ mode: 'revalidate' });
   } catch { /* ignore */ }
 });
 

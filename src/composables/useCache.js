@@ -33,5 +33,15 @@ export const useCache = () => {
 
   const clearCache = () => cache.clear();
 
-  return { setItem, getItem, clearCache, getCacheKey };
+  const invalidate = (keyPrefix) => {
+    if (!keyPrefix) return;
+
+    for (const key of Array.from(cache.keys())) {
+      if (key.includes(`:${keyPrefix}:`)) {
+        cache.delete(key);
+      }
+    }
+  };
+
+  return { setItem, getItem, clearCache, invalidate, getCacheKey };
 };

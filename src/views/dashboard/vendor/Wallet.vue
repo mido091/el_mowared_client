@@ -208,7 +208,7 @@
                   type="button"
                   @click="selectProduct(product.id)"
                   class="flex w-full items-start justify-between gap-4 rounded-[1.25rem] px-4 py-3 text-start transition-colors hover:bg-muted/40"
-                  :class="Number(form.productId) === Number(product.id) ? 'bg-primary/8 ring-1 ring-primary/20' : ''"
+                    :class="Number(form.productId) === Number(product.id) ? 'bg-primary/10 ring-1 ring-primary/20' : ''"
                 >
                   <div class="min-w-0">
                     <p class="truncate text-sm font-black text-foreground">{{ product.product_name }}</p>

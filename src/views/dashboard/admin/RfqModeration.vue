@@ -257,6 +257,7 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import api from '@/services/api';
 import {
@@ -272,15 +273,16 @@ import {
   BanIcon
 } from 'lucide-vue-next';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useRfqStore } from '@/stores/rfqStore';
 import { normalizeError } from '@/utils/errorHandler';
-import { getApiCollection, getApiData } from '@/utils/apiResponse';
+import { getApiData } from '@/utils/apiResponse';
 import { formatEGPCurrency } from '@/utils/currency';
 
 const { t } = useI18n();
 const notificationStore = useNotificationStore();
+const rfqStore = useRfqStore();
+const { adminRfqs, loading } = storeToRefs(rfqStore);
 
-const allRfqs = ref([]);
-const loading = ref(true);
 const actionLoading = ref(false);
 const detailsOpen = ref(false);
 const detailLoading = ref(false);
@@ -342,16 +344,16 @@ const copy = computed(() =>
 const pendingStatuses = ['PENDING', 'DRAFT'];
 const broadcastedStatuses = ['BROADCASTED', 'OPEN'];
 
-const totalCount = computed(() => allRfqs.value.length);
-const pendingCount = computed(() => allRfqs.value.filter((r) => pendingStatuses.includes(r.status)).length);
-const broadcastedCount = computed(() => allRfqs.value.filter((r) => broadcastedStatuses.includes(r.status)).length);
+const totalCount = computed(() => adminRfqs.value.length);
+const pendingCount = computed(() => adminRfqs.value.filter((r) => pendingStatuses.includes(r.status)).length);
+const broadcastedCount = computed(() => adminRfqs.value.filter((r) => broadcastedStatuses.includes(r.status)).length);
 
 const filteredRfqs = computed(() => {
-  if (activeFilter.value === 'all') return allRfqs.value;
+  if (activeFilter.value === 'all') return adminRfqs.value;
   if (activeFilter.value === 'broadcasted') {
-    return allRfqs.value.filter((r) => broadcastedStatuses.includes(r.status));
+    return adminRfqs.value.filter((r) => broadcastedStatuses.includes(r.status));
   }
-  return allRfqs.value.filter((r) => pendingStatuses.includes(r.status));
+  return adminRfqs.value.filter((r) => pendingStatuses.includes(r.status));
 });
 
 const queueTitle = computed(() => {
@@ -426,14 +428,10 @@ const selectedCategoryName = computed(() => {
 });
 
 const fetchData = async () => {
-  loading.value = true;
   try {
-    const res = await api.get('/rfq');
-    allRfqs.value = getApiCollection(res, ['rfqs', 'items']);
+    await rfqStore.fetchAdminRfqs({ mode: 'revalidate' });
   } catch (error) {
     console.error('Failed fetching moderation list', error);
-  } finally {
-    loading.value = false;
   }
 };
 

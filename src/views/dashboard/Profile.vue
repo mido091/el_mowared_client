@@ -470,8 +470,8 @@ const loadBuyerRfqs = async () => {
   if (!isBuyer.value) return;
   buyerRfqsLoading.value = true;
   try {
-    const res = await api.get('/rfq');
-    buyerRfqs.value = getApiCollection(res);
+    await rfqStore.fetchPublicRfqs({ mode: 'revalidate' });
+    buyerRfqs.value = [...rfqStore.rfqs];
   } finally {
     buyerRfqsLoading.value = false;
   }
@@ -651,7 +651,7 @@ const confirmDeleteBuyerRfq = async () => {
   deleteRfqLoading.value = true;
   try {
     await rfqStore.deleteRfq(pendingDeleteRfq.value.id);
-    buyerRfqs.value = buyerRfqs.value.filter((item) => Number(item.id) !== Number(pendingDeleteRfq.value.id));
+    await loadBuyerRfqs();
     uiStore.showToast(isArabic.value ? '\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u0637\u0644\u0628 \u0628\u0646\u062C\u0627\u062D' : 'RFQ deleted successfully', 'success');
     deleteConfirmOpen.value = false;
     pendingDeleteRfq.value = null;

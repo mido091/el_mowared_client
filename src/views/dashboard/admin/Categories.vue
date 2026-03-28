@@ -27,7 +27,12 @@
     </div>
 
     <!-- Categories Table -->
-    <DataTable :columns="columns" :items="categoryStore.adminCategories" :loading="categoryStore.loading">
+    <DataTable
+      :columns="columns"
+      :items="categoryStore.adminCategories"
+      :loading="categoryStore.loading"
+      mobile-title-key="name"
+    >
       <template #cell-name="{ item }">
         <div class="flex items-center gap-4">
           <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-secondary border border-border/40 transition-colors group-hover:bg-secondary/10">
@@ -67,12 +72,24 @@
         <span v-else class="text-[10px] font-black text-muted-foreground/30 uppercase tracking-widest">— Root</span>
       </template>
 
+      <template #cell-record_state="{ item }">
+        <div :class="[
+          'inline-flex items-center px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all',
+          item.record_state === 'DELETED'
+            ? 'bg-slate-500/10 text-slate-600 border border-slate-500/20'
+            : 'bg-green-500/10 text-green-600 border border-green-500/20'
+        ]">
+          <span class="w-1.5 h-1.5 rounded-full me-2" :class="item.record_state === 'DELETED' ? 'bg-slate-500' : 'bg-green-600'"></span>
+          {{ categoryStateLabel(item) }}
+        </div>
+      </template>
+
       <template #cell-actions="{ item }">
         <div class="flex gap-2 justify-end">
-          <button @click="openModal(item)" class="p-2 hover:bg-muted text-muted-foreground hover:text-secondary rounded-lg transition-colors">
+          <button v-if="item.record_state !== 'DELETED'" @click="openModal(item)" class="p-2 hover:bg-muted text-muted-foreground hover:text-secondary rounded-lg transition-colors">
             <Edit class="w-4 h-4" />
           </button>
-          <button @click="confirmDelete(item)" class="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors">
+          <button @click="confirmDelete(item)" class="p-2 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors" :title="item.record_state === 'DELETED' ? (locale === 'ar' ? 'حذف نهائي' : 'Purge permanently') : t('common.delete', 'Delete')">
             <Trash2 class="w-4 h-4" />
           </button>
         </div>
@@ -106,21 +123,24 @@
             required
             @input="form.slug = $event.target.value.toLowerCase().replace(/\s+/g, '-')"
           />
-          <div class="space-y-2">
-            <label class="form-label">{{ t('admin.parentCategory') }}</label>
-            <select v-model="form.parentId" class="form-input">
-              <option :value="null">None (Root Category)</option>
-              <option v-for="cat in parentOptions" :key="cat.id" :value="cat.id">
-                {{ locale === 'ar' ? cat.nameAr : cat.nameEn }}
-              </option>
-            </select>
-          </div>
-          <div class="space-y-2">
-            <label class="form-label">{{ t('admin.icon') }}</label>
-            <select v-model="form.icon" class="form-input">
-              <option v-for="icon in iconOptions" :key="icon" :value="icon">{{ icon }}</option>
-            </select>
-          </div>
+          <ResponsiveSelect
+            v-model="form.parentId"
+            :label="t('admin.parentCategory')"
+            :options="parentCategoryOptions"
+            :placeholder="t('admin.parentCategory')"
+            :sheet-title="t('admin.parentCategory')"
+            :sheet-kicker="locale === 'ar' ? 'الفلاتر' : 'Filters'"
+            searchable
+          />
+          <ResponsiveSelect
+            v-model="form.icon"
+            :label="t('admin.icon')"
+            :options="iconSelectOptions"
+            :placeholder="t('admin.icon')"
+            :sheet-title="t('admin.icon')"
+            :sheet-kicker="locale === 'ar' ? 'اختر' : 'Select'"
+            searchable
+          />
         </div>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-border/40">
@@ -152,6 +172,7 @@ import DataTable from '@/components/ui/DataTable.vue';
 import BaseModal from '@/components/ui/BaseModal.vue';
 import BaseInput from '@/components/ui/BaseInput.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
+import ResponsiveSelect from '@/components/ui/ResponsiveSelect.vue';
 import { useUiStore } from '@/stores/ui';
 
 const { t, locale } = useI18n();
@@ -173,6 +194,7 @@ const form = ref({
 
 const columns = [
   { key: 'name', label: t('admin.categoryName') },
+  { key: 'record_state', label: t('common.status') },
   { key: 'parent', label: t('admin.parentCategory') },
   { key: 'translations', label: t('admin.translations') },
   { key: 'actions', label: '', class: 'w-24' }
@@ -181,6 +203,19 @@ const columns = [
 const parentOptions = computed(() => {
   return categoryStore.adminCategories.filter(c => c.id !== editingId.value && !c.parent_id);
 });
+
+const parentCategoryOptions = computed(() => [
+  {
+    value: null,
+    label: locale.value === 'ar' ? 'بدون قسم أب' : 'None (Root Category)',
+    description: locale.value === 'ar' ? 'القسم يظهر في المستوى الرئيسي' : 'Category will be created at the root level',
+  },
+  ...parentOptions.value.map((category) => ({
+    value: category.id,
+    label: locale.value === 'ar' ? category.nameAr : category.nameEn,
+    description: `/${category.slug}`,
+  })),
+]);
 
 const getParentName = (parentId) => {
   const parent = categoryStore.adminCategories.find(c => c.id === parentId);
@@ -191,6 +226,14 @@ const iconOptions = [
   'default', 'cctv', 'networking', 'data_centers', 'electronics', 
   'tools', 'security', 'it', 'zap', 'smartphone'
 ];
+
+const iconSelectOptions = computed(() =>
+  iconOptions.map((icon) => ({
+    value: icon,
+    label: icon.replace(/_/g, ' '),
+    description: locale.value === 'ar' ? 'أيقونة العرض داخل القوائم' : 'Used for category presentation in lists',
+  }))
+);
 
 const iconMap = {
   'cctv': Camera,
@@ -205,8 +248,11 @@ const iconMap = {
 };
 
 const getIcon = (name) => iconMap[name] || iconMap.default;
+const categoryStateLabel = (item) => item.record_state === 'DELETED'
+  ? (locale.value === 'ar' ? 'محذوف' : 'Deleted')
+  : (locale.value === 'ar' ? 'نشط' : 'Active');
 
-const fetchCategories = () => categoryStore.fetchCategories();
+const fetchCategories = () => categoryStore.fetchCategories({ mode: 'fresh', scope: 'admin' });
 
 const openModal = (item = null) => {
   if (item) {
@@ -244,15 +290,24 @@ const saveCategory = async () => {
 };
 
 const confirmDelete = async (item) => {
+  const isDeletedRecord = `${item.record_state || ''}`.toUpperCase() === 'DELETED';
   if (await notificationStore.confirm(
-    t('admin.confirmDeleteCategory'),
+    isDeletedRecord
+      ? (locale.value === 'ar'
+        ? 'هذا القسم محذوف بالفعل. هل تريد حذفه نهائيًا من النظام؟'
+        : 'This category is already deleted. Do you want to purge it permanently from the system?')
+      : t('admin.confirmDeleteCategory', 'Deleting this category will permanently remove it and all related data.'),
     'common.confirm'
   )) {
     try {
       await categoryStore.deleteCategory(item.id);
-      notificationStore.success(t('admin.categoryDeleted'));
+      notificationStore.success(
+        isDeletedRecord
+          ? (locale.value === 'ar' ? 'تم حذف القسم نهائيًا من النظام.' : 'Category purged permanently from the system.')
+          : t('admin.categoryDeleted')
+      );
     } catch (err) {
-      notificationStore.error('Failed to delete');
+      notificationStore.error(normalizeError(err).message);
     }
   }
 };

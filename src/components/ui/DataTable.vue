@@ -1,30 +1,130 @@
 <template>
   <div class="space-y-4">
     <!-- Header/Filters -->
-    <div v-if="hasFilters" class="flex flex-col md:flex-row gap-4 items-center justify-between pb-2">
-      <div class="flex-1 w-full max-w-sm relative">
+    <div v-if="hasFilters" class="list-toolbar rounded-[1.75rem]">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div class="relative w-full max-w-xl flex-1">
         <Search class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input 
           v-model="search" 
           :placeholder="t('common.searchPlaceholder')" 
-          class="form-input ps-9 h-10 text-sm w-full" 
+            class="form-input h-12 w-full ps-9 text-sm"
         />
       </div>
-      <div class="flex items-center gap-2">
-        <slot name="actions" />
+
+        <div class="flex flex-wrap items-center gap-2">
+          <slot name="actions" />
+        </div>
       </div>
     </div>
 
     <!-- Table -->
-    <div class="card overflow-visible shadow-sm">
-      <div :class="['w-full transition-all duration-300', allowOverflow ? 'overflow-visible' : 'overflow-x-auto']">
+    <div class="list-shell overflow-visible">
+      <div
+        v-if="responsive && isMobile"
+        class="space-y-3 p-3 sm:p-4"
+      >
+        <template v-if="loading">
+          <div
+            v-for="i in 4"
+            :key="i"
+            class="list-card space-y-4"
+          >
+            <div class="h-5 w-1/2 rounded-xl bg-muted animate-pulse" />
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div
+                v-for="j in 3"
+                :key="j"
+                class="rounded-2xl border border-border/70 p-3"
+              >
+                <div class="h-3 w-1/3 rounded-lg bg-muted animate-pulse" />
+                <div class="mt-3 h-4 w-3/4 rounded-lg bg-muted animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="processedItems.length === 0">
+          <div class="list-card py-14 text-center">
+            <div class="opacity-60 space-y-3">
+              <Archive class="mx-auto h-10 w-10 text-muted-foreground" />
+              <p class="text-sm font-semibold text-muted-foreground">{{ t('common.noData') }}</p>
+            </div>
+          </div>
+        </template>
+
+        <template v-else>
+          <article
+            v-for="item in processedItems"
+            :key="item.id"
+            class="list-card group"
+          >
+            <div class="flex items-start gap-4">
+              <div class="min-w-0 flex-1">
+                <p
+                  v-if="mobileTitleColumn?.label"
+                  class="ui-kicker"
+                >
+                  {{ mobileTitleColumn.label }}
+                </p>
+                <div class="mt-2 text-base font-black leading-6 text-foreground">
+                  <slot :name="`cell-${mobileTitleColumn?.key}`" :item="item">
+                    {{ item[mobileTitleColumn?.key] }}
+                  </slot>
+                </div>
+              </div>
+
+              <div
+                v-if="mobileActionsColumn"
+                class="shrink-0"
+              >
+                <slot :name="`cell-${mobileActionsColumn.key}`" :item="item">
+                  {{ item[mobileActionsColumn.key] }}
+                </slot>
+              </div>
+            </div>
+
+            <div
+              v-if="mobileDetailColumns.length"
+              class="mt-4 grid gap-3"
+              :class="mobileDetailColumns.length > 1 ? 'sm:grid-cols-2' : ''"
+            >
+              <div
+                v-for="col in mobileDetailColumns"
+                :key="col.key"
+                class="rounded-2xl border border-border/70 bg-background/70 p-3"
+              >
+                <p
+                  v-if="col.label"
+                  class="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground"
+                >
+                  {{ col.label }}
+                </p>
+                <div class="mt-2 text-sm font-semibold text-foreground">
+                  <slot :name="`cell-${col.key}`" :item="item">
+                    {{ item[col.key] }}
+                  </slot>
+                </div>
+              </div>
+            </div>
+          </article>
+        </template>
+      </div>
+
+      <div
+        v-else
+        :class="[
+          'w-full transition-all duration-300',
+          allowOverflow ? 'overflow-visible' : 'overflow-x-auto'
+        ]"
+      >
         <table class="w-full text-sm text-start">
-          <thead class="bg-muted/50 border-b border-border [&>tr>th:first-child]:rounded-tl-xl [&>tr>th:last-child]:rounded-tr-xl">
+          <thead class="bg-gradient-to-r from-slate-50 via-slate-50 to-slate-100/70 border-b border-border [&>tr>th:first-child]:rounded-tl-[1.5rem] [&>tr>th:last-child]:rounded-tr-[1.5rem] dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
             <tr>
               <th 
                 v-for="col in columns" 
                 :key="col.key"
-                class="px-6 py-4 font-black text-start whitespace-nowrap"
+                class="px-6 py-4 text-start whitespace-nowrap text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground"
                 :class="[col.sortable ? 'cursor-pointer hover:bg-muted transition-colors' : '']"
                 @click="col.sortable && toggleSort(col.key)"
               >
@@ -39,7 +139,7 @@
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-border">
+          <tbody class="divide-y divide-border/80">
             <template v-if="loading">
               <tr v-for="i in 5" :key="i">
                 <td v-for="col in columns" :key="col.key" class="px-6 py-4">
@@ -58,8 +158,8 @@
               </tr>
             </template>
             <template v-else>
-              <tr v-for="item in processedItems" :key="item.id" class="hover:bg-muted/30 transition-colors group">
-                <td v-for="col in columns" :key="col.key" class="px-6 py-4">
+              <tr v-for="item in processedItems" :key="item.id" class="group transition-colors hover:bg-primary/5">
+                <td v-for="col in columns" :key="col.key" class="px-6 py-4 align-top">
                   <slot :name="`cell-${col.key}`" :item="item">
                     {{ item[col.key] }}
                   </slot>
@@ -71,7 +171,7 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="px-6 py-4 border-t border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-b-xl">
+      <div v-if="totalPages > 1" class="flex flex-col items-center justify-between gap-4 border-t border-border bg-muted/20 px-4 py-4 sm:flex-row sm:px-6">
         <p class="text-[10px] text-muted-foreground font-black uppercase tracking-widest order-2 sm:order-1">
           {{ t('common.showing') }} {{ startRange }} - {{ endRange }} {{ t('common.of') }} {{ totalCount || items.length }}
         </p>
@@ -128,6 +228,7 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Search, ChevronDown, ChevronUp, ChevronsUpDown, Archive, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import BaseButton from './BaseButton.vue';
+import { useMediaQuery } from '@/composables/useMediaQuery';
 
 const props = defineProps({
   items:      { type: Array, default: () => [] },
@@ -138,9 +239,23 @@ const props = defineProps({
   // Optional: pass server-side total when items are a single page from the backend
   totalCount:    { type: Number,  default: null },
   allowOverflow: { type: Boolean, default: false },
+  responsive:    { type: Boolean, default: true },
+  mobileBreakpoint: {
+    type: String,
+    default: '(max-width: 767px)',
+  },
+  mobileTitleKey: {
+    type: String,
+    default: '',
+  },
+  mobileActionsKey: {
+    type: String,
+    default: 'actions',
+  },
 });
 
 const { t } = useI18n();
+const isMobile = useMediaQuery(props.mobileBreakpoint);
 
 const search    = ref('');
 const page      = ref(1);
@@ -186,6 +301,29 @@ const processedItems = computed(() => {
 const totalPages = computed(() => props.totalCount ? Math.ceil(props.totalCount / props.pageSize) : Math.ceil(props.items.length / props.pageSize));
 const startRange = computed(() => (page.value - 1) * props.pageSize + 1);
 const endRange   = computed(() => props.totalCount ? Math.min(page.value * props.pageSize, props.totalCount) : Math.min(page.value * props.pageSize, props.items.length));
+
+const mobileTitleColumn = computed(() => {
+  if (!props.columns.length) return null;
+
+  if (props.mobileTitleKey) {
+    const matched = props.columns.find((column) => column.key === props.mobileTitleKey);
+    if (matched) return matched;
+  }
+
+  return props.columns.find((column) => column.key !== props.mobileActionsKey) || props.columns[0];
+});
+
+const mobileActionsColumn = computed(() =>
+  props.columns.find((column) => column.key === props.mobileActionsKey) || null
+);
+
+const mobileDetailColumns = computed(() =>
+  props.columns.filter((column) => {
+    if (column.key === mobileActionsColumn.value?.key) return false;
+    if (column.key === mobileTitleColumn.value?.key) return false;
+    return true;
+  })
+);
 
 const visiblePages = computed(() => {
   const total = totalPages.value;

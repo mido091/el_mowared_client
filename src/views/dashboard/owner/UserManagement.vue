@@ -6,12 +6,12 @@
         <h1 class="text-3xl font-black text-foreground uppercase tracking-tighter">{{ t('admin.userManagement', 'User Ecosystem') }}</h1>
         <p class="text-muted-foreground font-medium uppercase text-[10px] tracking-[0.2em] mt-1 italic">{{ t('admin.user_subtitle') }}</p>
       </div>
-      <div class="flex items-center gap-3">
-        <button @click="openCreateModal" class="btn-primary btn-sm rounded-2xl shadow-lg shadow-primary/20">
+      <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+        <button @click="openCreateModal" class="btn-primary btn-sm rounded-2xl shadow-lg shadow-primary/20 w-full sm:w-auto justify-center">
           <UserPlus class="w-4 h-4 me-2" />
           {{ t('admin.actions.add_user', 'Add New User') }}
         </button>
-        <button @click="fetchUsers" class="btn-outline btn-sm rounded-2xl font-black uppercase tracking-widest text-[10px]">
+        <button @click="fetchUsers" class="btn-outline btn-sm rounded-2xl font-black uppercase tracking-widest text-[10px] w-full sm:w-auto justify-center">
           <RotateCcw class="w-4 h-4 me-2" />
           {{ t('common.refresh', 'Sync Directory') }}
         </button>
@@ -35,7 +35,7 @@
     <div class="bg-card border border-border rounded-3xl overflow-visible shadow-sm shadow-black/5">
       <!-- Controls Bar -->
       <div class="p-6 border-b border-border bg-muted/20 flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-t-[calc(1.5rem-1px)]">
-        <div class="flex items-center gap-4 flex-wrap">
+        <div class="flex min-w-0 items-center gap-4 flex-wrap">
           <!-- Batch Actions -->
           <Transition name="fade">
             <div v-if="selectedIds.length > 0" class="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-2xl border border-primary/20">
@@ -47,7 +47,7 @@
           </Transition>
 
           <!-- Tabs (Users vs Logs) -->
-          <div class="flex gap-1 bg-background p-1 rounded-2xl border border-border/50 backdrop-blur-sm">
+          <div class="flex max-w-full gap-1 overflow-x-auto bg-background p-1 rounded-2xl border border-border/50 backdrop-blur-sm">
             <button 
               @click="activeTab = 'users'"
               :class="[
@@ -70,7 +70,7 @@
         </div>
 
         <!-- Role Filters (User Request: 5 Buttons) -->
-        <div class="flex flex-wrap gap-2 items-center bg-background p-1.5 rounded-[1.5rem] border border-border/50 shadow-inner">
+        <div class="flex max-w-full flex-nowrap gap-2 overflow-x-auto items-center bg-background p-1.5 rounded-[1.5rem] border border-border/50 shadow-inner">
           <button 
             v-for="filter in ['ALL', ...roles]"
             :key="filter"
@@ -94,6 +94,9 @@
           :items="filteredUsers" 
           :loading="loading" 
           :has-filters="true"
+          mobile-breakpoint="(max-width: 1279px)"
+          mobile-title-key="full_name"
+          mobile-actions-key="actions"
           v-model:selected="selectedIds"
           selectable
           allow-overflow
@@ -115,7 +118,7 @@
           </template>
           
           <template #cell-role="{ item }">
-             <div class="relative inline-block" v-click-outside="() => activeRoleMenu = activeRoleMenu === item.id ? null : activeRoleMenu">
+             <div v-if="item.record_state !== 'DELETED'" class="relative inline-block" v-click-outside="() => activeRoleMenu = activeRoleMenu === item.id ? null : activeRoleMenu">
                <button 
                  @click.stop="activeRoleMenu = activeRoleMenu === item.id ? null : item.id"
                  class="flex items-center gap-2 bg-muted/50 border border-border/50 rounded-xl px-3 py-2 text-[9px] font-black uppercase tracking-widest text-foreground hover:bg-muted transition-all min-w-[110px] justify-between group"
@@ -127,7 +130,7 @@
 
                <!-- Role Dropdown -->
                <Transition name="dropdown-pop">
-                 <div v-if="activeRoleMenu === item.id" class="absolute z-50 mt-2 min-w-[140px] bg-card border border-border/60 rounded-2xl shadow-luxury py-2 animate-in fade-in zoom-in-95 duration-200">
+                 <div v-if="activeRoleMenu === item.id" class="absolute z-50 mt-2 min-w-[160px] max-w-[calc(100vw-2rem)] start-0 sm:start-auto sm:end-0 bg-card border border-border/60 rounded-2xl shadow-luxury py-2 animate-in fade-in zoom-in-95 duration-200">
                    <button 
                      v-for="role in roles" 
                      :key="role"
@@ -141,10 +144,28 @@
                  </div>
                </Transition>
              </div>
+             <span v-else class="inline-flex items-center rounded-xl border border-border bg-muted/50 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+               {{ item.role }}
+             </span>
+          </template>
+
+          <template #cell-record_state="{ item }">
+             <div :class="[
+               'inline-flex items-center px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all',
+               item.record_state === 'DELETED'
+                 ? 'bg-slate-500/10 text-slate-600 border border-slate-500/20'
+                 : item.record_state === 'INACTIVE'
+                   ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                   : 'bg-green-500/10 text-green-600 border border-green-500/20'
+             ]">
+               <span class="w-1.5 h-1.5 rounded-full me-2" :class="item.record_state === 'DELETED' ? 'bg-slate-500' : item.record_state === 'INACTIVE' ? 'bg-amber-600' : 'bg-green-600'"></span>
+               {{ recordStateLabel(item) }}
+             </div>
           </template>
 
           <template #cell-status="{ item }">
-             <button 
+             <button
+               v-if="item.record_state !== 'DELETED'"
                @click="toggleStatus(item)"
                :class="[
                  'inline-flex items-center px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all',
@@ -154,6 +175,10 @@
                <span class="w-1.5 h-1.5 rounded-full me-2" :class="item.is_active ? 'bg-green-600' : 'bg-red-600'"></span>
                {{ item.is_active ? t('common.active') : t('common.inactive') }}
              </button>
+             <span v-else class="inline-flex items-center px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-slate-500/10 text-slate-600 border border-slate-500/20">
+               <span class="w-1.5 h-1.5 rounded-full me-2 bg-slate-500"></span>
+               {{ locale === 'ar' ? 'غير متاح' : 'Unavailable' }}
+             </span>
           </template>
 
           <template #cell-created_at="{ item }">
@@ -175,7 +200,7 @@
 
                <!-- Actions Menu -->
                <Transition name="dropdown-pop">
-                 <div v-if="activeActionsMenu === item.id" class="absolute top-full end-0 mt-2 min-w-[200px] border border-border/60 rounded-2xl shadow-luxury py-2 z-[60] animate-in fade-in zoom-in-95 duration-200 backdrop-blur-md bg-card/95">
+                 <div v-if="activeActionsMenu === item.id" class="absolute top-full mt-2 min-w-[220px] max-w-[calc(100vw-2rem)] start-0 sm:start-auto sm:end-0 border border-border/60 rounded-2xl shadow-luxury py-2 z-[60] animate-in fade-in zoom-in-95 duration-200 backdrop-blur-md bg-card/95">
                    <router-link 
                       v-if="item.role === 'MOWARED' && item.vendor_profile_id"
                       :to="`/vendor/${item.vendor_profile_id}`" 
@@ -185,11 +210,11 @@
                       {{ t('admin.actions.view_profile') }}
                     </router-link>
 
-                   <button @click="openEditModal(item); activeActionsMenu = null" class="w-full flex items-center gap-3 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                   <button v-if="item.record_state !== 'DELETED'" @click="openEditModal(item); activeActionsMenu = null" class="w-full flex items-center gap-3 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                      <UserCog class="w-4 h-4" />
                      {{ t('admin.actions.edit_user') }}
                    </button>
-                   <button @click="toggleStatus(item); activeActionsMenu = null" class="w-full flex items-center gap-3 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-colors" :class="item.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'">
+                   <button v-if="item.record_state !== 'DELETED'" @click="toggleStatus(item); activeActionsMenu = null" class="w-full flex items-center gap-3 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-colors" :class="item.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'">
                      <Ban v-if="item.is_active" class="w-4 h-4" />
                      <CheckCircle v-else class="w-4 h-4" />
                      {{ item.is_active ? t('admin.actions.ban_account') : t('admin.actions.activate_account') }}
@@ -197,8 +222,11 @@
                    <div class="h-px bg-border/50 my-1 mx-2"></div>
                    <button @click="deleteUser(item); activeActionsMenu = null" class="w-full flex items-center gap-3 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/5 transition-colors">
                      <Trash2 class="w-4 h-4" />
-                     {{ t('admin.actions.delete_permanently') }}
+                     {{ item.record_state === 'DELETED' ? (locale === 'ar' ? 'حذف نهائي' : 'Purge permanently') : t('admin.actions.delete_permanently') }}
                    </button>
+                   <div v-if="item.record_state === 'DELETED'" class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                     {{ locale === 'ar' ? 'السجل محذوف بالفعل' : 'Record already deleted' }}
+                   </div>
                  </div>
                </Transition>
              </div>
@@ -332,12 +360,14 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <BaseInput v-model="newUser.password" :label="t('auth.password')" :placeholder="t('auth.passwordPlaceholder')" type="password" :icon="ShieldCheck" />
-          <div class="space-y-2">
-            <label class="text-[10px] font-black uppercase text-muted-foreground tracking-widest ps-1">{{ t('common.role') }}</label>
-            <select v-model="newUser.role" class="w-full px-4 py-3 bg-muted border-2 border-transparent rounded-2xl text-xs font-bold text-foreground focus:border-primary/30 transition-all outline-none appearance-none shadow-inner">
-              <option v-for="r in roles" :key="r" :value="r">{{ r }}</option>
-            </select>
-          </div>
+          <ResponsiveSelect
+            v-model="newUser.role"
+            :label="t('common.role')"
+            :options="roleOptions"
+            :placeholder="t('common.role')"
+            :sheet-title="t('common.role')"
+            :sheet-kicker="locale === 'ar' ? 'إدارة المستخدمين' : 'User management'"
+          />
         </div>
       </div>
 
@@ -353,6 +383,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { normalizeError } from '@/utils/errorHandler';
 import { 
@@ -365,17 +396,19 @@ import api from '@/services/api';
 import { getApiCollection } from '@/utils/apiResponse';
 import { useUiStore } from '@/stores/ui';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useAdminUsersStore } from '@/stores/adminUsersStore';
 import DataTable from '@/components/ui/DataTable.vue';
 import BaseInput from '@/components/ui/BaseInput.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import BaseModal from '@/components/ui/BaseModal.vue';
+import ResponsiveSelect from '@/components/ui/ResponsiveSelect.vue';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const uiStore = useUiStore();
 const notificationStore = useNotificationStore();
-const loading = ref(true);
+const usersStore = useAdminUsersStore();
+const { normalizedUsers: users, loading } = storeToRefs(usersStore);
 const logsLoading = ref(false);
-const users = ref([]);
 const logs = ref([]);
 const activeTab = ref('users');
 const selectedIds = ref([]);
@@ -406,6 +439,25 @@ const isEditModalOpen = computed({
 });
 
 const roles = ['USER', 'MOWARED', 'ADMIN', 'OWNER'];
+const roleOptions = computed(() =>
+  roles.map((role) => ({
+    value: role,
+    label: t(`roles.${role}`, role),
+    description: locale.value === 'ar'
+      ? {
+          USER: 'حساب عميل عادي للتصفح والطلبات',
+          MOWARED: 'حساب مورد لإدارة المنتجات والعروض',
+          ADMIN: 'مشرف لإدارة العمليات اليومية',
+          OWNER: 'مالك النظام بصلاحيات كاملة',
+        }[role]
+      : {
+          USER: 'Standard customer account for browsing and requests',
+          MOWARED: 'Supplier account for products and offers',
+          ADMIN: 'Admin account for daily operations',
+          OWNER: 'Full system owner permissions',
+        }[role],
+  }))
+);
 
 const filteredUsers = computed(() => {
   if (roleFilter.value === 'ALL') return users.value;
@@ -429,14 +481,15 @@ const vClickOutside = {
 
 const userStats = computed(() => [
   { label: 'admin.totalUsers', value: users.value.length, icon: Users, borderClass: 'border-l-primary', textClass: 'text-primary' },
-  { label: 'admin.activeUsers', value: users.value.filter(u => u.is_active).length, icon: UserCheck, borderClass: 'border-l-green-500', textClass: 'text-green-500' },
-  { label: 'admin.bannedUsers', value: users.value.filter(u => !u.is_active).length, icon: UserX, borderClass: 'border-l-red-500', textClass: 'text-red-500' },
+  { label: 'admin.activeUsers', value: users.value.filter(u => u.record_state === 'ACTIVE').length, icon: UserCheck, borderClass: 'border-l-green-500', textClass: 'text-green-500' },
+  { label: 'admin.bannedUsers', value: users.value.filter(u => u.record_state !== 'ACTIVE').length, icon: UserX, borderClass: 'border-l-red-500', textClass: 'text-red-500' },
   { label: 'admin.admins', value: users.value.filter(u => u.role === 'ADMIN' || u.role === 'OWNER').length, icon: ShieldCheck, borderClass: 'border-l-amber-500', textClass: 'text-amber-500' }
 ]);
 
 const columns = [
   { key: 'full_name',  label: t('common.fullName') },
   { key: 'role',       label: t('common.role') },
+  { key: 'record_state', label: t('common.status') },
   { key: 'status',     label: t('common.status') },
   { key: 'created_at', label: t('common.joinedAt') },
   { key: 'actions',    label: '', class: 'w-20' }
@@ -450,14 +503,21 @@ const logColumns = [
 ];
 
 const formatDate = (d) => new Date(d).toLocaleDateString();
+const recordStateLabel = (user) => {
+  switch (`${user.record_state || ''}`.toUpperCase()) {
+    case 'DELETED':
+      return locale.value === 'ar' ? 'محذوف' : 'Deleted';
+    case 'INACTIVE':
+      return locale.value === 'ar' ? 'موقوف' : 'Inactive';
+    default:
+      return locale.value === 'ar' ? 'نشط' : 'Active';
+  }
+};
 
 const fetchUsers = async () => {
-  loading.value = true;
   try {
-    const res = await api.get('/admin/users');
-    users.value = getApiCollection(res, ['users', 'items']);
+    await usersStore.fetchUsers({ mode: 'revalidate' });
   } catch (err) { uiStore.showToast(t('admin.toasts.fetch_users_failed'), 'error'); } 
-  finally { loading.value = false; }
 };
 
 const fetchLogs = async () => {
@@ -473,18 +533,27 @@ const updateRole = async (user, newRole) => {
   if (user.role === newRole) return;
   if (!(await notificationStore.confirm(t('admin.confirm.role_change', { role: t(`roles.${newRole}`) }), 'common.confirm'))) return;
   try {
-    await api.patch(`/admin/users/${user.id}/role`, { role: newRole });
-    user.role = newRole;
+    await usersStore.updateRole(user.id, newRole);
     uiStore.showToast(t('admin.toasts.role_updated', { role: t(`roles.${newRole}`) }), 'success');
   } catch (err) { uiStore.showToast(t('admin.toasts.role_update_failed'), 'error'); }
 };
 
 const deleteUser = async (user) => {
-  if (!(await notificationStore.confirm(t('admin.confirm.delete_user', { name: user.first_name }), 'common.confirm'))) return;
+  const isDeletedRecord = `${user.record_state || ''}`.toUpperCase() === 'DELETED';
+  const confirmMessage = isDeletedRecord
+    ? (locale.value === 'ar'
+        ? `هذا الحساب مؤرشف بالفعل. هل تريد حذفه نهائيًا من النظام؟`
+        : `This account is already archived. Do you want to purge it permanently from the system?`)
+    : t('admin.confirm.delete_user', { name: user.first_name });
+  if (!(await notificationStore.confirm(confirmMessage, 'common.confirm'))) return;
   try {
-    await api.delete(`/admin/users/${user.id}`);
-    users.value = users.value.filter(u => u.id !== user.id);
-    uiStore.showToast(t('admin.toasts.delete_success'), 'success');
+    await usersStore.deleteUser(user.id);
+    uiStore.showToast(
+      isDeletedRecord
+        ? (locale.value === 'ar' ? 'تم الحذف النهائي بنجاح' : 'Record purged successfully')
+        : t('admin.toasts.delete_success'),
+      'success'
+    );
   } catch (err) { uiStore.showToast(t('admin.toasts.delete_failed'), 'error'); }
 };
 
@@ -498,10 +567,9 @@ const openCreateModal = () => {
 const createUser = async () => {
   creatingUser.value = true;
   try {
-    await api.post('/admin/users', newUser.value);
+    await usersStore.createUser(newUser.value);
     uiStore.showToast(t('admin.toasts.save_success'), 'success');
     isCreateModalOpen.value = false;
-    fetchUsers();
   } catch (err) { uiStore.showToast(t('admin.toasts.save_failed'), 'error'); } 
   finally { creatingUser.value = false; }
 };
@@ -550,9 +618,7 @@ const saveUserChanges = async () => {
     if (raw.profile_image_url)  payload.profileImageUrl = raw.profile_image_url;
     if (raw.is_active !== undefined) payload.isActive = !!raw.is_active;
 
-    await api.patch(`/admin/users/${raw.id}`, payload);
-    const idx = users.value.findIndex(u => u.id === raw.id);
-    if (idx !== -1) users.value[idx] = { ...users.value[idx], ...raw };
+    await usersStore.updateUser(raw.id, payload);
     uiStore.showToast(t('admin.toasts.save_success'), 'success');
     editingUser.value = null;
     } catch (err) { 
@@ -567,8 +633,7 @@ const toggleStatus = async (user) => {
   const actionText = t(newStatus ? 'admin.actions.activate_account' : 'admin.actions.ban_account');
   if (!(await notificationStore.confirm(t('admin.confirm.status_toggle', { action: actionText }), 'common.confirm'))) return;
   try {
-    await api.patch(`/admin/users/${user.id}/status`, { isActive: newStatus });
-    user.is_active = newStatus;
+    await usersStore.toggleStatus(user.id, newStatus);
     uiStore.showToast(t('admin.toasts.status_updated', { status: newStatus ? t('common.active') : t('common.inactive') }), newStatus ? 'success' : 'warning');
   } catch (err) { uiStore.showToast(t('admin.toasts.status_update_failed'), 'error'); }
 };
@@ -577,10 +642,9 @@ const bulkStatus = async (activate) => {
   const actionText = t(activate ? 'admin.actions.activate_account' : 'admin.actions.ban_account');
   if (!(await notificationStore.confirm(t('admin.confirm.bulk_status', { action: actionText, count: selectedIds.value.length }), 'common.confirm'))) return;
   try {
-    await Promise.all(selectedIds.value.map(id => api.patch(`/admin/users/${id}/status`, { isActive: activate })));
+    await Promise.all(selectedIds.value.map(id => usersStore.toggleStatus(id, activate)));
     uiStore.showToast(t('admin.toasts.bulk_success'), 'success');
     selectedIds.value = [];
-    fetchUsers();
   } catch (err) { uiStore.showToast(t('admin.toasts.bulk_failed'), 'error'); fetchUsers(); }
 };
 

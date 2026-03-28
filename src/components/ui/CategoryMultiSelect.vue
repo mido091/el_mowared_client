@@ -198,7 +198,7 @@ watch(isOpen, (val) => {
 
 onMounted(() => {
   window.addEventListener('click', handleClickOutside);
-  categoryStore.fetchCategories();
+  categoryStore.fetchCategories({ mode: 'revalidate' });
 });
 
 onBeforeUnmount(() => window.removeEventListener('click', handleClickOutside));

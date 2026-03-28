@@ -3,6 +3,9 @@ import api from '@/services/api';
 import { useCache } from '@/composables/useCache';
 import { getApiCollection } from '@/utils/apiResponse';
 import { normalizeError } from '@/utils/errorHandler';
+import { createDomainSync } from '@/utils/domainSync';
+
+const productSync = createDomainSync('products');
 
 export const useProductsStore = defineStore('products', {
   state: () => ({
@@ -12,10 +15,35 @@ export const useProductsStore = defineStore('products', {
     loading: false,
     error: null,
     success: false,
+    syncReady: false,
+    revision: 0,
+    lastParams: {},
   }),
 
   actions: {
+    ensureSync() {
+      if (this.syncReady || typeof window === 'undefined') return;
+
+      productSync.ensure();
+      productSync.subscribe((payload = {}) => {
+        const incomingRevision = Number(payload.revision || 0);
+        if (incomingRevision && incomingRevision <= Number(this.revision || 0)) return;
+        this.revision = incomingRevision;
+        const { invalidate } = useCache();
+        invalidate('products');
+        invalidate('featured-products');
+        if (this.success || this.products.length || Object.keys(this.lastParams || {}).length) {
+          this.fetchProducts(this.lastParams).catch(() => {});
+          this.fetchFeatured().catch(() => {});
+        }
+      });
+
+      this.syncReady = true;
+    },
+
     async fetchProducts(params = {}) {
+      this.ensureSync();
+      this.lastParams = { ...params };
       const { getItem, setItem } = useCache();
       const cached = getItem('products', params);
 
@@ -40,6 +68,7 @@ export const useProductsStore = defineStore('products', {
     },
 
     async fetchFeatured(params = {}) {
+      this.ensureSync();
       const { getItem, setItem } = useCache();
       const cached = getItem('featured-products');
 

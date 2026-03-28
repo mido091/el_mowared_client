@@ -394,7 +394,7 @@ const loadFeaturedProducts = async () => {
 
 const loadCategories = async () => {
   try {
-    await categoryStore.fetchCategories();
+    await categoryStore.fetchCategories({ mode: 'revalidate' });
   } catch (err) {
     console.error('Category load failed:', err);
   } finally {

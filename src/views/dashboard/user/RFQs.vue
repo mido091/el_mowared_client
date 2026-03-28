@@ -48,16 +48,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { Plus, ArrowUpRight } from 'lucide-vue-next';
-import api from '@/services/api';
-import DashCard from '@/components/dashboard/DashCard.vue';
+import { useRfqStore } from '@/stores/rfqStore';
 import DataTable from '@/components/ui/DataTable.vue';
 
 const { t } = useI18n();
-const loading = ref(true);
-const rfqs = ref([]);
+const rfqStore = useRfqStore();
+const { rfqs, loading } = storeToRefs(rfqStore);
 
 const columns = [
   { key: 'title', label: t('rfq.requirement') },
@@ -79,17 +79,9 @@ const getStatusDot = (s) => {
   return 'bg-amber-500 hover:bg-amber-600';
 };
 
-onMounted(async () => {
-  loading.value = true;
-  try {
-    // Backend: GET /rfq returns RFQs filtered to the authenticated user's own RFQs
-    const res = await api.get('/rfq');
-    // api.js interceptor already unwraps response.data
-    rfqs.value = Array.isArray(res) ? res : (res?.data ?? []);
-  } catch (err) {
+onMounted(() => {
+  rfqStore.fetchPublicRfqs({ mode: 'revalidate' }).catch((err) => {
     console.error('RFQ Error:', err);
-  } finally {
-    loading.value = false;
-  }
+  });
 });
 </script>

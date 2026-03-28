@@ -1,6 +1,6 @@
 <template>
-  <router-link :to="productPath" class="group flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-[0_18px_44px_-32px_rgba(15,23,42,0.28)] transition-all duration-300 hover:-translate-y-1 hover:border-[hsl(var(--primary))]/25 hover:shadow-[0_24px_56px_-32px_rgba(15,23,42,0.36)] dark:border-slate-800 dark:bg-slate-900 font-plex" :dir="locale === 'ar' ? 'rtl' : 'ltr'">
-    <div class="relative aspect-[4/3] overflow-hidden bg-muted/30">
+  <router-link :to="productPath" class="group flex self-start flex-col overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-[0_14px_32px_-28px_rgba(15,23,42,0.28)] transition-all duration-300 hover:-translate-y-1 hover:border-[hsl(var(--primary))]/25 hover:shadow-[0_18px_40px_-28px_rgba(15,23,42,0.32)] dark:border-slate-800 dark:bg-slate-900 font-plex" :dir="locale === 'ar' ? 'rtl' : 'ltr'">
+    <div class="relative h-28 overflow-hidden bg-muted/30 sm:h-32 lg:h-28 xl:h-32 2xl:h-24">
       <AppImage
         v-if="displayImage"
         :src="displayImage"
@@ -16,7 +16,7 @@
         v-else
         class="ui-empty-media"
       >
-        <div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-200/70 bg-white/80 text-lg font-black uppercase tracking-[0.18em] shadow-sm dark:border-slate-700 dark:bg-slate-800/80">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/70 bg-white/80 text-sm font-black uppercase tracking-[0.18em] shadow-sm dark:border-slate-700 dark:bg-slate-800/80">
           {{ productInitials }}
         </div>
       </div>
@@ -25,7 +25,7 @@
         <button
           @click.prevent="comparisonStore.toggle(product)"
           :class="[
-            'flex h-9 w-9 items-center justify-center rounded-xl shadow-lg transition-all',
+            'flex h-8 w-8 items-center justify-center rounded-lg shadow-lg transition-all',
             comparisonStore.isInList(product.id)
               ? 'bg-secondary text-white'
               : 'bg-white/90 text-foreground hover:bg-primary hover:text-white'
@@ -37,27 +37,27 @@
       </div>
 
       <div v-if="discountPercent > 0" class="absolute end-2 top-2">
-        <span class="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-black text-white shadow-sm">
+        <span class="rounded-full bg-destructive px-2 py-0.5 text-[9px] font-black text-white shadow-sm">
           -{{ discountPercent }}%
         </span>
       </div>
 
-      <div class="absolute start-3 top-3">
-        <span class="rounded-full border border-white/60 bg-white/90 px-2.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-200">
+      <div class="absolute start-2 top-2">
+        <span class="rounded-full border border-white/60 bg-white/90 px-2 py-1 text-[9px] font-bold text-slate-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-200">
           {{ categoryLabel }}
         </span>
       </div>
     </div>
 
-    <div class="flex flex-1 flex-col p-4">
-      <div class="mb-2 flex items-center gap-1.5">
+    <div class="flex flex-col p-3">
+      <div class="mb-1.5 flex items-center gap-1">
         <VendorBadge v-if="product.vendor?.is_verified" type="verified" />
-        <span class="truncate text-[11px] font-medium text-muted-foreground">
+        <span class="truncate text-[10px] font-medium text-muted-foreground">
           {{ product.vendor?.company_name || product.vendor?.name || product.company_name || '' }}
         </span>
       </div>
 
-      <h3 class="product-title mb-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+      <h3 class="product-title mb-1 min-h-[2.25rem] overflow-hidden text-[13px] font-bold leading-[1.15rem] text-foreground transition-colors group-hover:text-primary">
         {{ productTitle }}
       </h3>
 
@@ -65,36 +65,36 @@
         v-if="product.avg_rating"
         :modelValue="parseFloat(product.avg_rating)"
         :count="product.review_count"
-        class="mb-2"
+        class="mb-1.5"
       />
 
-      <div class="mt-auto border-t border-border/60 pt-3">
-        <p class="mb-2 text-[11px] font-bold" :class="stockTone">
+      <div class="border-t border-border/60 pt-2">
+        <p class="mb-1 text-[10px] font-bold" :class="stockTone">
           {{ stockLabel }}
         </p>
         <div class="flex items-end justify-between">
-          <div>
-            <p class="text-base font-black text-primary" dir="ltr">
+          <div class="min-w-0 flex-1">
+            <p class="text-[13px] font-black leading-tight text-primary" dir="ltr">
               <template v-if="product.discount_price">
                 {{ formatCurrency(product.discount_price) }}
-                <span class="ms-1 text-[11px] font-medium text-muted-foreground line-through">
+                <span class="ms-1 text-[10px] font-medium text-muted-foreground line-through">
                   {{ formatCurrency(product.price_min || product.price) }}
                 </span>
               </template>
               <template v-else>
                 {{ formatCurrency(product.price_min || product.price) }}
-                <span v-if="product.price_max && product.price_max !== product.price_min" class="text-sm font-medium text-muted-foreground">
+                <span v-if="product.price_max && product.price_max !== product.price_min" class="text-[10px] font-medium text-muted-foreground">
                   - {{ formatCurrency(product.price_max) }}
                 </span>
               </template>
             </p>
-            <p v-if="product.moq || product.min_order_quantity" class="mt-0.5 text-[11px] font-medium text-muted-foreground">
+            <p v-if="product.moq || product.min_order_quantity" class="mt-0.5 text-[9px] font-medium leading-4 text-muted-foreground">
               {{ t('products.moq_label', { n: product.moq || product.min_order_quantity, u: t('products.pieces') }) }}
             </p>
           </div>
 
-          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--primary))/0.1] text-[hsl(var(--primary))] transition-all group-hover:bg-primary group-hover:text-white">
-            <ArrowRight class="h-4 w-4 rtl:rotate-180" />
+          <div class="ms-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--primary))/0.1] text-[hsl(var(--primary))] transition-all group-hover:bg-primary group-hover:text-white">
+            <ArrowRight class="h-3.5 w-3.5 rtl:rotate-180" />
           </div>
         </div>
       </div>

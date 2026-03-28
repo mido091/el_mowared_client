@@ -52,15 +52,32 @@
           {{ t('admin.' + item.verification_status.toLowerCase()) }}
         </div>
       </template>
+      <template #cell-record_state="{ item }">
+        <div :class="[
+          'inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
+          item.record_state === 'DELETED'
+            ? 'bg-slate-500/10 text-slate-600 border border-slate-500/20'
+            : item.record_state === 'INACTIVE'
+              ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+              : 'bg-primary/10 text-primary border border-primary/20'
+        ]">
+          <span class="w-1.5 h-1.5 rounded-full me-2" :class="item.record_state === 'DELETED' ? 'bg-slate-500' : item.record_state === 'INACTIVE' ? 'bg-amber-600' : 'bg-primary'"></span>
+          {{ recordStateLabel(item) }}
+        </div>
+      </template>
       <template #cell-actions="{ item }">
          <div class="flex gap-2 justify-end">
             <button @click="openVendor(item)" class="btn-ghost btn-xs !rounded-xl flex items-center hover:bg-primary/5 hover:text-primary transition-all group">
               <Eye class="w-3.5 h-3.5 me-1.5 opacity-50 group-hover:opacity-100" /> 
               <span class="text-[10px] font-black uppercase tracking-widest">{{ t('common.review') }}</span>
             </button>
-            <button v-if="item.verification_status === 'PENDING'" @click="toggleVerify(item.id, true)" class="btn-success btn-xs !rounded-xl flex items-center shadow-sm hover:shadow-md transition-all">
+            <button v-if="item.verification_status === 'PENDING' && item.record_state !== 'DELETED'" @click="toggleVerify(item.id, true)" class="btn-success btn-xs !rounded-xl flex items-center shadow-sm hover:shadow-md transition-all">
               <Check class="w-3.5 h-3.5 me-1.5" /> 
               <span class="text-[10px] font-black uppercase tracking-widest">{{ t('common.approve') }}</span>
+            </button>
+            <button @click="confirmDeleteVendor(item)" class="btn-ghost btn-xs !rounded-xl flex items-center text-destructive hover:bg-destructive/5 transition-all">
+              <Trash2 class="w-3.5 h-3.5 me-1.5" />
+              <span class="text-[10px] font-black uppercase tracking-widest">{{ item.record_state === 'DELETED' ? (locale === 'ar' ? 'حذف نهائي' : 'Purge') : t('common.delete', 'Delete') }}</span>
             </button>
          </div>
       </template>
@@ -73,23 +90,29 @@
       @close="modalOpen = false" 
       @verify="vId => toggleVerify(vId, true)"
       @reject="vId => toggleVerify(vId, false)"
+      @delete="confirmDeleteVendorById"
     />
   </div>
 </template>
 
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
-import { Check, X, Package, Eye } from 'lucide-vue-next';
+import { Check, X, Package, Eye, Trash2 } from 'lucide-vue-next';
 import api from '@/services/api';
 import { useUiStore } from '@/stores/ui';
+import { useNotificationStore } from '@/stores/notificationStore';
+import { normalizeError } from '@/utils/errorHandler';
+import { useAdminVendorsStore } from '@/stores/adminVendorsStore';
 import DataTable from '@/components/ui/DataTable.vue';
 import VendorDetailModal from '@/components/dashboard/VendorDetailModal.vue';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const uiStore = useUiStore();
-const loading = ref(true);
-const vendors = ref([]);
+const notificationStore = useNotificationStore();
+const vendorsStore = useAdminVendorsStore();
+const { vendors, loading } = storeToRefs(vendorsStore);
 const activeStatus = ref('ALL');
 
 const modalOpen = ref(false);
@@ -97,24 +120,30 @@ const selectedVendor = ref({});
 
 const columns = [
   { key: 'company_name', label: t('vendor.companyName') },
+  { key: 'record_state', label: t('common.status') },
   { key: 'status', label: t('common.status') },
   { key: 'actions', label: '', class: 'w-48 text-end' }
 ];
 
+const recordStateLabel = (item) => {
+  switch (`${item.record_state || ''}`.toUpperCase()) {
+    case 'DELETED':
+      return t('common.deleted', 'Deleted');
+    case 'INACTIVE':
+      return locale.value === 'ar' ? 'موقوف' : 'Inactive';
+    default:
+      return t(`admin.${String(item.verification_status || 'PENDING').toLowerCase()}`, item.verification_status || 'PENDING');
+  }
+};
+
 const fetchVendors = async () => {
-  loading.value = true;
   try {
-    const res = await api.get('/admin/vendors', { 
-      params: { 
-        status: activeStatus.value === 'ALL' ? undefined : activeStatus.value 
-      } 
+    await vendorsStore.fetchVendors({
+      status: activeStatus.value,
+      mode: 'revalidate',
     });
-    // api.js interceptor already unwraps — use res directly
-    vendors.value = Array.isArray(res) ? res : (res?.data ?? []);
   } catch (err) { 
     uiStore.showToast(t('errors.fetch_failed'), 'error'); 
-  } finally { 
-    loading.value = false; 
   }
 };
 
@@ -136,20 +165,60 @@ const openVendor = async (vendor) => {
 
 const toggleVerify = async (id, verify) => {
   try {
-    // Route to the correct endpoint based on action
     if (verify) {
-      await api.put(`/admin/vendors/${id}/verify`);
+      await vendorsStore.verifyVendor(id);
     } else {
-      await api.put(`/admin/vendors/${id}/reject`);
+      await vendorsStore.rejectVendor(id);
     }
     uiStore.showToast(
       verify ? t('admin.vendorApproved') : t('admin.vendorRejected'), 
       verify ? 'success' : 'warning'
     );
     modalOpen.value = false;
-    fetchVendors();
   } catch (err) { 
     uiStore.showToast(t('errors.action_failed'), 'error'); 
+  }
+};
+
+const deleteVendor = async (vendorId) => {
+  await vendorsStore.deleteVendor(vendorId);
+  if ((selectedVendor.value?.vendor_id || selectedVendor.value?.id) === vendorId) {
+    selectedVendor.value = {};
+    modalOpen.value = false;
+  }
+};
+
+const confirmDeleteVendorById = async (vendorId) => {
+  const vendor = vendors.value.find((item) => (item.vendor_id || item.id) === vendorId) || selectedVendor.value;
+  await confirmDeleteVendor(vendor);
+};
+
+const confirmDeleteVendor = async (vendor) => {
+  const vendorId = vendor?.vendor_id || vendor?.id;
+  if (!vendorId) return;
+  const isDeletedRecord = `${vendor?.record_state || ''}`.toUpperCase() === 'DELETED';
+
+  const confirmed = await notificationStore.confirm(
+    isDeletedRecord
+      ? (locale.value === 'ar'
+        ? 'هذا المورد محذوف بالفعل. هل تريد حذفه نهائيًا من النظام؟'
+        : 'This vendor is already deleted. Do you want to purge it permanently from the system?')
+      : t('admin.confirmDeleteVendor', 'This will permanently delete the vendor and all related data.'),
+    'common.confirm'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await deleteVendor(vendorId);
+    uiStore.showToast(
+      isDeletedRecord
+        ? (locale.value === 'ar' ? 'تم حذف المورد نهائيًا من النظام.' : 'Vendor purged permanently from the system.')
+        : t('admin.vendorDeleted', 'Vendor deleted successfully'),
+      'success'
+    );
+  } catch (err) {
+    uiStore.showToast(normalizeError(err).message, 'error');
   }
 };
 

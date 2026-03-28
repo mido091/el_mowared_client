@@ -260,7 +260,7 @@ const normalizeProfile = (payload) => {
 const fetchProfile = async () => {
   loading.value = true;
   try {
-    await categoryStore.fetchCategories();
+    await categoryStore.fetchCategories({ mode: 'revalidate' });
     const response = await api.get('/vendor/me');
     vendorProfile.value = normalizeProfile(response?.data || response);
 

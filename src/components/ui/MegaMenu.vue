@@ -59,7 +59,7 @@ const getIcon = (name) => {
 };
 
 onMounted(() => {
-  categoryStore.fetchCategories();
+  categoryStore.fetchCategories({ mode: 'revalidate' });
 });
 
 const vClickOutside = {

@@ -25,12 +25,16 @@
           <input v-model.trim="search" type="text" :placeholder="labels.searchPlaceholder" class="form-input ps-10" />
         </div>
 
-        <select v-model.number="selectedCategoryId" class="form-input lg:w-72">
-          <option :value="0">{{ labels.allCategories }}</option>
-          <option v-for="category in categories" :key="category.id" :value="category.id">
-            {{ locale === 'ar' ? category.name_ar : category.name_en }}
-          </option>
-        </select>
+        <div class="lg:w-72">
+          <ResponsiveSelect
+            v-model="selectedCategoryId"
+            :options="categoryOptions"
+            :placeholder="labels.allCategories"
+            :sheet-title="labels.allCategories"
+            :sheet-kicker="locale === 'ar' ? 'فلاتر الفرص' : 'Lead filters'"
+            searchable
+          />
+        </div>
       </div>
 
       <div class="mt-5 flex flex-wrap gap-2">
@@ -169,6 +173,7 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { useRfqStore } from '@/stores/rfqStore';
 import { formatEGPCurrency } from '@/utils/currency';
 import { normalizeError } from '@/utils/errorHandler';
+import ResponsiveSelect from '@/components/ui/ResponsiveSelect.vue';
 
 const router = useRouter();
 const { locale } = useI18n();
@@ -218,6 +223,18 @@ const labels = computed(() => ({
 }));
 
 const categories = computed(() => categoryStore.categories);
+const categoryOptions = computed(() => [
+  {
+    value: 0,
+    label: labels.value.allCategories,
+    description: locale.value === 'ar' ? 'كل التخصصات المرتبطة بك' : 'All categories relevant to your profile',
+  },
+  ...categories.value.map((category) => ({
+    value: Number(category.id),
+    label: locale.value === 'ar' ? category.name_ar : category.name_en,
+    description: category.slug ? `/${category.slug}` : '',
+  })),
+]);
 const tabLabels = computed(() => ({
   incomplete: locale.value === 'ar' ? 'غير مكتمل' : 'Incomplete',
   completed: locale.value === 'ar' ? 'مكتمل' : 'Completed'
@@ -365,7 +382,7 @@ async function loadVendorProfileId() {
 
 onMounted(async () => {
   await Promise.all([
-    categoryStore.fetchCategories(true),
+    categoryStore.fetchCategories({ mode: 'revalidate' }),
     rfqStore.fetchFeed(),
     loadVendorProfileId()
   ]);

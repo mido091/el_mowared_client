@@ -169,6 +169,13 @@
           <UserDropdown />
         </template>
 
+        <router-link
+          to="/rfq/post"
+          class="hidden md:inline-flex items-center justify-center rounded-[1.1rem] bg-[hsl(var(--primary))] px-4 py-2 text-sm font-black text-white shadow-[0_16px_40px_-24px_hsl(var(--primary))] transition hover:translate-y-[-1px] hover:shadow-[0_20px_48px_-24px_hsl(var(--primary))]"
+        >
+          {{ t('rfq.postRfq') }}
+        </router-link>
+
         <!-- Mobile menu -->
         <button @click="toggleMobileMenu" class="btn-ghost btn-icon md:hidden">
           <Menu class="w-5 h-5" />
@@ -225,6 +232,14 @@
     <!-- Mobile Nav -->
     <transition name="slide-down">
       <div v-if="mobileMenuOpen" class="layer-mobile-nav relative md:hidden bg-card border-t border-border px-4 py-4 space-y-2 shadow-lg">
+        <router-link
+          to="/rfq/post"
+          @click="mobileMenuOpen = false"
+          class="mb-3 inline-flex w-full items-center justify-center rounded-[1.1rem] bg-[hsl(var(--primary))] px-4 py-3 text-sm font-black text-white shadow-[0_16px_40px_-24px_hsl(var(--primary))]"
+        >
+          {{ t('rfq.postRfq') }}
+        </router-link>
+
         <div ref="mobileSearchRef" class="relative mb-4">
           <Search class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input

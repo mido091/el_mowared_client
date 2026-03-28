@@ -47,25 +47,15 @@
           </div>
 
           <div class="space-y-6">
-            <div>
-              <label class="mb-3 block ui-kicker">
-                {{ categoryLabel }}
-              </label>
-              <div class="max-h-60 space-y-2 overflow-y-auto custom-scrollbar pe-1">
-                <label class="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2 transition hover:border-[hsl(var(--primary))]/20 hover:bg-[hsl(var(--primary))/0.06]">
-                  <input v-model="filters.category" type="radio" value="" class="h-4 w-4 accent-[hsl(var(--primary))]" />
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ allCategoriesLabel }}</span>
-                </label>
-                <label
-                  v-for="category in categories"
-                  :key="category.id"
-                  class="flex items-center gap-3 rounded-2xl border border-transparent px-3 py-2 transition hover:border-[hsl(var(--primary))]/20 hover:bg-[hsl(var(--primary))/0.06]"
-                >
-                  <input v-model="filters.category" type="radio" :value="category.id" class="h-4 w-4 accent-[hsl(var(--primary))]" />
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ category.name }}</span>
-                </label>
-              </div>
-            </div>
+            <ResponsiveSelect
+              v-model="filters.category"
+              :label="categoryLabel"
+              :options="categoryOptions"
+              :placeholder="allCategoriesLabel"
+              :sheet-title="filtersTitle"
+              :sheet-kicker="categoryLabel"
+              searchable
+            />
 
             <div>
               <label class="mb-3 block ui-kicker">
@@ -114,16 +104,16 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-              <select
-                v-model="sort"
-                class="min-w-[170px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-[hsl(var(--primary))] focus:ring-4 focus:ring-[hsl(var(--primary))/0.12] dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                @change="fetchProducts"
-              >
-                <option value="">{{ defaultSortLabel }}</option>
-                <option value="price_asc">{{ sortPriceAscLabel }}</option>
-                <option value="price_desc">{{ sortPriceDescLabel }}</option>
-                <option value="newest">{{ sortNewestLabel }}</option>
-              </select>
+              <div class="min-w-[210px]">
+                <ResponsiveSelect
+                  v-model="sort"
+                  :options="sortOptions"
+                  :placeholder="defaultSortLabel"
+                  :sheet-title="defaultSortLabel"
+                  :sheet-kicker="locale === 'ar' ? 'ترتيب النتائج' : 'Sorting'"
+                  @change="fetchProducts"
+                />
+              </div>
 
               <div class="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-950">
                 <button
@@ -147,12 +137,12 @@
           </div>
         </div>
 
-        <div v-if="loading" :class="gridView ? 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3' : 'space-y-4'">
+        <div v-if="loading" :class="gridView ? 'grid items-start grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6' : 'space-y-4'">
           <div v-for="i in gridView ? 9 : 6" :key="i" class="skeleton rounded-[1.75rem]" :class="gridView ? 'h-96' : 'h-36'" />
         </div>
 
         <div v-else-if="products.length">
-          <div v-if="gridView" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div v-if="gridView" class="grid items-start grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
             <ProductCard v-for="product in products" :key="product.id" :product="product" />
           </div>
 
@@ -229,6 +219,7 @@ import AppImage from '@/components/ui/AppImage.vue';
 import ProductCard from '@/components/ui/ProductCard.vue';
 import Pagination from '@/components/ui/Pagination.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import ResponsiveSelect from '@/components/ui/ResponsiveSelect.vue';
 import { buildProductPath } from '@/utils/routes';
 import { whenBrowserIdle } from '@/utils/scheduling';
 
@@ -264,6 +255,25 @@ const resolveAssetUrl = (src) => {
 
 const categories = computed(() => categoryStore.localizedCategories(locale.value));
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)));
+const categoryOptions = computed(() => [
+  {
+    value: '',
+    label: allCategoriesLabel.value,
+    description: locale.value === 'ar' ? 'إظهار كل المنتجات المعتمدة' : 'Show all approved products',
+  },
+  ...categories.value.map((category) => ({
+    value: String(category.id),
+    label: category.name,
+    description: category.slug ? `/${category.slug}` : '',
+  })),
+]);
+
+const sortOptions = computed(() => [
+  { value: '', label: defaultSortLabel.value, description: locale.value === 'ar' ? 'الترتيب الافتراضي للمنصة' : 'Marketplace default order' },
+  { value: 'price_asc', label: sortPriceAscLabel.value, description: locale.value === 'ar' ? 'أقل سعر أولاً' : 'Lowest price first' },
+  { value: 'price_desc', label: sortPriceDescLabel.value, description: locale.value === 'ar' ? 'أعلى سعر أولاً' : 'Highest price first' },
+  { value: 'newest', label: sortNewestLabel.value, description: locale.value === 'ar' ? 'أحدث المنتجات أولاً' : 'Newest products first' },
+]);
 
 const productDisplayName = (product) =>
   locale.value === 'ar'
@@ -442,7 +452,7 @@ watch(
 
 onMounted(() => {
   whenBrowserIdle(() => {
-    categoryStore.fetchCategories();
+    categoryStore.fetchCategories({ mode: 'revalidate' });
   }, 120);
   fetchProducts();
 });

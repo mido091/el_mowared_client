@@ -125,8 +125,8 @@
                 <Box class="h-10 w-10 text-muted-foreground/50" />
               </div>
               <div class="absolute start-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-secondary shadow-sm backdrop-blur dark:bg-card/90 dark:text-slate-100">
-                <span class="h-2 w-2 rounded-full" :class="statusDot(product.lifecycle_status || product.status)"></span>
-                {{ statusLabel(product.lifecycle_status || product.status) }}
+                <span class="h-2 w-2 rounded-full" :class="statusDot(effectiveRecordState(product))"></span>
+                {{ statusLabel(effectiveRecordState(product)) }}
               </div>
             </div>
 
@@ -147,13 +147,14 @@
 
               <div class="flex items-center gap-2">
                 <button
-                  v-if="!isApproved(product)"
+                  v-if="effectiveRecordState(product) !== 'DELETED' && !isApproved(product)"
                   class="flex-1 rounded-2xl bg-primary px-4 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white transition hover:opacity-90"
                   @click.stop="approveFromCard(product)"
                 >
                   {{ locale === 'ar' ? 'اعتماد' : 'Approve' }}
                 </button>
                 <button
+                  v-if="effectiveRecordState(product) !== 'DELETED'"
                   class="flex-1 rounded-2xl bg-rose-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-rose-600 transition hover:bg-rose-100"
                   @click.stop="startReject(product)"
                 >
@@ -497,12 +498,14 @@ const formatCurrency = (value) => formatEGPCurrency(value, locale.value);
 const statusLabel = (status) => {
   const normalized = (status || 'PENDING').toUpperCase();
   if (locale.value === 'ar') {
+    if (normalized === 'DELETED') return 'محذوف';
     if (normalized === 'APPROVED') return 'معتمد';
     if (normalized === 'REJECTED') return 'مرفوض';
     if (normalized === 'UPDATE_PENDING') return 'تحديث قيد المراجعة';
     return 'قيد المراجعة';
   }
 
+  if (normalized === 'DELETED') return 'Deleted';
   if (normalized === 'APPROVED') return 'Approved';
   if (normalized === 'REJECTED') return 'Rejected';
   if (normalized === 'UPDATE_PENDING') return 'Update pending';
@@ -511,13 +514,15 @@ const statusLabel = (status) => {
 
 const statusDot = (status) => {
   const normalized = (status || 'PENDING').toUpperCase();
+  if (normalized === 'DELETED') return 'bg-slate-500';
   if (normalized === 'APPROVED') return 'bg-emerald-500';
   if (normalized === 'REJECTED') return 'bg-rose-500';
   if (normalized === 'UPDATE_PENDING') return 'bg-orange-500';
   return 'bg-amber-500';
 };
+const effectiveRecordState = (product) => `${product?.record_state || product?.lifecycle_status || product?.status || 'PENDING'}`.toUpperCase();
 const isApproved = (product) => {
-  return (product?.lifecycle_status || product?.status || '').toUpperCase() === 'APPROVED';
+  return effectiveRecordState(product) === 'APPROVED';
 };
 
 const isVendorExpanded = (key) => expandedVendors.value.has(key);

@@ -114,5 +114,5 @@ const statusBadge = (s) => ({
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—';
 
-onMounted(() => rfqStore.fetchPublicRfqs());
+onMounted(() => rfqStore.fetchPublicRfqs({ mode: 'revalidate' }));
 </script>

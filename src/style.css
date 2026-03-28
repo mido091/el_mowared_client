@@ -273,6 +273,46 @@
     @apply px-4 py-3 text-foreground;
   }
 
+  .list-shell {
+    @apply overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-[0_22px_60px_-40px_rgba(15,23,42,0.32)];
+  }
+
+  .list-toolbar {
+    @apply flex flex-col gap-4 border-b border-border/70 bg-gradient-to-br from-white via-slate-50/80 to-slate-100/70 p-4 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950;
+  }
+
+  .list-card {
+    @apply rounded-[1.4rem] border border-border/70 bg-gradient-to-br from-white to-slate-50/90 p-4 shadow-[0_20px_45px_-40px_rgba(15,23,42,0.45)] dark:from-slate-900 dark:to-slate-950;
+  }
+
+  .bottom-sheet-panel {
+    @apply rounded-t-[2rem] border border-border bg-card px-4 pb-6 pt-4 shadow-[0_-24px_80px_-36px_rgba(15,23,42,0.5)] sm:px-6;
+  }
+
+  .responsive-select-trigger {
+    @apply flex min-h-[3.25rem] w-full items-center gap-3 rounded-[1.35rem] border border-border bg-background px-4 py-3 text-sm shadow-[0_16px_40px_-34px_rgba(15,23,42,0.4)] transition-all duration-200 hover:border-primary/20 hover:bg-card focus-visible:ring-2 focus-visible:ring-primary/20;
+  }
+
+  .responsive-select-menu {
+    @apply overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-[0_28px_70px_-38px_rgba(15,23,42,0.48)];
+  }
+
+  .responsive-select-option {
+    @apply flex w-full items-center gap-3 rounded-[1.1rem] px-3 py-3 text-foreground transition-all hover:bg-primary/5 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .responsive-select-option-active {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .responsive-sheet-option {
+    @apply mb-2 flex w-full items-center gap-3 rounded-[1.4rem] border border-transparent bg-muted/35 px-4 py-4 text-foreground transition-all hover:border-primary/20 hover:bg-primary/5;
+  }
+
+  .responsive-sheet-option-active {
+    @apply border-primary/20 bg-primary/10 text-primary;
+  }
+
   /* ── SKELETON ────────────────────────────────── */
   .skeleton {
     @apply bg-muted/60 dark:bg-muted rounded-xl animate-pulse;

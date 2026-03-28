@@ -77,7 +77,7 @@
 
       <div v-if="offers.length" class="space-y-4">
         <div v-for="offer in offers" :key="offer.id" class="rounded-2xl border border-border p-5">
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-3">
                 <div class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 text-sm font-black text-slate-500 dark:bg-slate-800">
@@ -86,15 +86,11 @@
                 </div>
                 <div>
                   <p class="font-black text-foreground">{{ offer.vendor?.company_name || labels.vendorFallback }}</p>
-                  <p class="text-xs text-muted-foreground">{{ offer.delivery_time || labels.noDeliveryTime }}</p>
                 </div>
               </div>
-
-              <p class="mt-4 text-sm leading-7 text-muted-foreground">{{ offer.notes || labels.noOfferNotes }}</p>
             </div>
 
-            <div class="shrink-0 space-y-3 lg:text-end">
-              <p class="text-2xl font-black text-primary">{{ formatCurrency(offer.offered_price || offer.price) }}</p>
+            <div class="shrink-0">
               <div class="flex flex-col gap-2 sm:flex-row lg:justify-end">
                 <button
                   v-if="isBuyer"
@@ -167,7 +163,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ChevronLeft, FileText } from 'lucide-vue-next';
@@ -249,6 +245,7 @@ const canBuyerChatSelectedVendor = computed(() => isBuyer.value && !!selectedOff
 const showPrimaryAction = computed(() => canVendorChatBuyer.value || canBuyerChatSelectedVendor.value);
 const fieldMessage = (field) => getFieldErrorMessage(rfqStore.fieldErrors, field, locale.value);
 const clearField = (field) => clearFieldError(rfqStore.fieldErrors, field);
+let stopRfqSync = null;
 
 const vendorInitials = (name = '') =>
   String(name)
@@ -353,9 +350,21 @@ async function acceptOffer(offerId) {
 
 onMounted(async () => {
   try {
+    rfqStore.ensureSync();
+    stopRfqSync = rfqStore.$subscribe((_mutation, state) => {
+      if (state.revision && rfq.value?.id) {
+        loadRfq().catch(() => {});
+      }
+    });
     await Promise.all([loadVendorProfileId(), loadRfq()]);
   } finally {
     loading.value = false;
+  }
+});
+
+onBeforeUnmount(() => {
+  if (typeof stopRfqSync === 'function') {
+    stopRfqSync();
   }
 });
 </script>

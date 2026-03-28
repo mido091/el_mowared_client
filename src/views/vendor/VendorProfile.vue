@@ -132,11 +132,11 @@
                   <p class="ui-kicker-on-dark">{{ categoriesLabel }}</p>
                   <div class="mt-3 flex flex-wrap gap-2">
                     <span
-                      v-for="category in categories.slice(0, 4)"
-                      :key="category.id || category.name_en || category.name_ar"
+                      v-for="category in displayCategories.slice(0, 4)"
+                      :key="category.id || category.name"
                       class="rounded-full bg-white/12 px-3 py-1 text-xs font-bold text-white"
                     >
-                      {{ localizeField(category, 'name', 'Category') }}
+                      {{ category.name }}
                     </span>
                   </div>
                 </div>
@@ -245,11 +245,11 @@
                 <p class="ui-kicker">{{ categoriesLabel }}</p>
                 <div class="mt-3 flex flex-wrap gap-2">
                   <span
-                    v-for="category in categories"
-                    :key="category.id || category.name_en || category.name_ar"
+                    v-for="category in displayCategories"
+                    :key="category.id || category.name"
                     class="rounded-full bg-[hsl(var(--primary))/0.12] px-3 py-1 text-xs font-bold text-[hsl(var(--primary))]"
                   >
-                    {{ localizeField(category, 'name', 'Category') }}
+                    {{ category.name }}
                   </span>
                 </div>
               </div>
@@ -287,6 +287,7 @@ import { useI18n } from 'vue-i18n';
 import { BadgeCheck, Loader2, MessageSquare, Star } from 'lucide-vue-next';
 import api from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
+import { useCategoryStore } from '@/stores/categoryStore';
 import { useChatStore } from '@/stores/chat';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
@@ -299,6 +300,7 @@ const { locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const categoryStore = useCategoryStore();
 const chatStore = useChatStore();
 const notificationStore = useNotificationStore();
 
@@ -326,6 +328,12 @@ const resolveAssetUrl = (src) => {
   if (/^(https?:)?\/\//i.test(src) || src.startsWith('data:') || src.startsWith('blob:')) return src;
   if (src.startsWith('/')) return `${apiOrigin}${src}`;
   return `${apiOrigin}/${src}`;
+};
+
+const resolveCategoryName = (category) => {
+  const liveCategory = category?.id ? categoryStore.getCategoryById(Number(category.id)) : null;
+  return categoryStore.localizedCategoryName(liveCategory || category, locale.value)
+    || localizeField(category, 'name', 'Category');
 };
 
 const loadVendorPage = async () => {
@@ -372,6 +380,20 @@ const isVerified = computed(() => {
   return status === 'APPROVED' || Boolean(vendor.value?.is_verified);
 });
 const categories = computed(() => Array.isArray(vendor.value?.categories) ? vendor.value.categories : []);
+const displayCategories = computed(() =>
+  categories.value
+    .map((category) => {
+      const liveCategory = category?.id ? categoryStore.getCategoryById(Number(category.id)) : null;
+      if (category?.id && categoryStore.lastFetched && !liveCategory) {
+        return null;
+      }
+      return {
+        id: category?.id || liveCategory?.id || null,
+        name: resolveCategoryName(liveCategory || category),
+      };
+    })
+    .filter((category) => category?.name)
+);
 const publicProductsCount = computed(() => {
   const metricsCount = Number(vendorMetrics.value?.total_products || 0);
   return metricsCount > 0 ? metricsCount : products.value.length;
@@ -490,5 +512,10 @@ useSeo(() => ({
 }));
 
 watch(() => route.params.id, loadVendorPage);
-onMounted(loadVendorPage);
+onMounted(async () => {
+  await Promise.allSettled([
+    loadVendorPage(),
+    categoryStore.fetchCategories({ mode: 'revalidate' }),
+  ]);
+});
 </script>

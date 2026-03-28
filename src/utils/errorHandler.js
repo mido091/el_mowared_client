@@ -11,6 +11,43 @@ const STATUS_FALLBACK_KEYS = {
   500: 'errors.server'
 };
 
+const FALLBACK_MESSAGES = {
+  'errors.generic': {
+    en: 'Something went wrong, please try again.',
+    ar: 'حدث خطأ، حاول مرة أخرى.'
+  },
+  'errors.network': {
+    en: 'Network error. Please check your connection and try again.',
+    ar: 'حدثت مشكلة في الاتصال. تحقق من الشبكة ثم حاول مرة أخرى.'
+  },
+  'errors.server': {
+    en: 'Server error. Please try again in a moment.',
+    ar: 'حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.'
+  },
+  'errors.validation': {
+    en: 'Please review the highlighted fields and try again.',
+    ar: 'يرجى مراجعة الحقول المحددة ثم المحاولة مرة أخرى.'
+  },
+  'errors.unauthorized': {
+    en: 'You need to sign in to continue.',
+    ar: 'تحتاج إلى تسجيل الدخول للمتابعة.'
+  },
+  'errors.forbidden': {
+    en: 'You are not allowed to perform this action.',
+    ar: 'غير مسموح لك بتنفيذ هذا الإجراء.'
+  },
+  'errors.notFoundShort': {
+    en: 'The requested item was not found.',
+    ar: 'العنصر المطلوب غير موجود.'
+  },
+  'errors.rateLimited': {
+    en: 'Too many requests. Please try again shortly.',
+    ar: 'هناك عدد كبير من الطلبات. يرجى المحاولة بعد قليل.'
+  }
+};
+
+const resolveFallbackByKey = (key) => FALLBACK_MESSAGES[key] || FALLBACK_MESSAGES['errors.generic'];
+
 const CLIENT_VALIDATION_MAP = {
   'Email is required': { en: 'Email is required.', ar: 'البريد الإلكتروني مطلوب.' },
   'Invalid email address': { en: 'Please enter a valid email address.', ar: 'يرجى إدخال بريد إلكتروني صحيح.' },
@@ -30,10 +67,7 @@ const CLIENT_VALIDATION_MAP = {
 
 const getFallbackMessage = (status) => {
   const key = STATUS_FALLBACK_KEYS[status] || 'errors.generic';
-  return {
-    en: i18n.global.t(key, {}, 'en'),
-    ar: i18n.global.t(key, {}, 'ar')
-  };
+  return resolveFallbackByKey(key);
 };
 
 export const normalizeFieldErrors = (fields = {}) => {
@@ -52,10 +86,7 @@ export const normalizeError = (error) => {
   const rawMessage = data?.message || error?.message;
 
   const message = isNetwork
-    ? {
-        en: i18n.global.t('errors.network', {}, 'en'),
-        ar: i18n.global.t('errors.network', {}, 'ar')
-      }
+    ? resolveFallbackByKey('errors.network')
     : isLocalizedMessage(rawMessage)
       ? rawMessage
       : rawMessage

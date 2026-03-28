@@ -2,10 +2,17 @@ import { defineStore } from 'pinia';
 import api from '@/services/api';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
 import { normalizeError } from '@/utils/errorHandler';
+import { createDomainSync } from '@/utils/domainSync';
+
+const rfqSync = createDomainSync('rfqs');
+const STALE_MS = 30 * 1000;
+
+const isFreshEnough = (timestamp) => Number(timestamp || 0) > 0 && (Date.now() - Number(timestamp)) < STALE_MS;
 
 export const useRfqStore = defineStore('rfq', {
   state: () => ({
     rfqs: [],
+    adminRfqs: [],
     feed: {},
     feedOrder: [],
     activeTab: 'active',
@@ -13,7 +20,12 @@ export const useRfqStore = defineStore('rfq', {
     submitting: false,
     success: false,
     error: null,
-    fieldErrors: {}
+    fieldErrors: {},
+    lastFetchedPublic: 0,
+    lastFetchedAdmin: 0,
+    lastFetchedFeed: 0,
+    revision: 0,
+    syncReady: false
   }),
 
   getters: {
@@ -32,7 +44,65 @@ export const useRfqStore = defineStore('rfq', {
   },
 
   actions: {
+    ensureSync() {
+      if (this.syncReady || typeof window === 'undefined') {
+        return;
+      }
+
+      this.revision = Math.max(this.revision || 0, rfqSync.getStoredRevision());
+      rfqSync.ensure();
+      rfqSync.subscribe(async () => {
+        this.revision = Math.max(this.revision || 0, rfqSync.getStoredRevision());
+
+        if (this.lastFetchedPublic) {
+          await this.fetchPublicRfqs({ mode: 'fresh', silent: true });
+        }
+
+        if (this.lastFetchedAdmin) {
+          await this.fetchAdminRfqs({ mode: 'fresh', silent: true });
+        }
+
+        if (this.lastFetchedFeed) {
+          await this.fetchFeed({ mode: 'fresh', silent: true });
+        }
+      });
+
+      const syncFreshData = async () => {
+        const latestRevision = rfqSync.getStoredRevision();
+        if (latestRevision <= (this.revision || 0)) return;
+
+        this.revision = latestRevision;
+
+        if (this.lastFetchedPublic) {
+          await this.fetchPublicRfqs({ mode: 'fresh', silent: true });
+        }
+
+        if (this.lastFetchedAdmin) {
+          await this.fetchAdminRfqs({ mode: 'fresh', silent: true });
+        }
+
+        if (this.lastFetchedFeed) {
+          await this.fetchFeed({ mode: 'fresh', silent: true });
+        }
+      };
+
+      window.addEventListener('focus', syncFreshData);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          syncFreshData();
+        }
+      });
+
+      this.syncReady = true;
+    },
+
+    invalidateRfqs(reason = 'mutation') {
+      this.revision = Date.now();
+      rfqSync.publish(reason);
+    },
+
     async createRfq(payload) {
+      this.ensureSync();
       this.submitting = true;
       this.error = null;
       this.fieldErrors = {};
@@ -40,6 +110,7 @@ export const useRfqStore = defineStore('rfq', {
         const res = await api.post('/rfq', payload, { errorMode: 'inline' });
         const data = getApiData(res);
         this.success = true;
+        this.invalidateRfqs('create-rfq');
         return data;
       } catch (err) {
         const normalized = normalizeError(err);
@@ -52,12 +123,14 @@ export const useRfqStore = defineStore('rfq', {
     },
 
     async acceptOffer(offerId, marketerId = null) {
+      this.ensureSync();
       this.submitting = true;
       this.error = null;
       this.fieldErrors = {};
       try {
         const payload = marketerId ? { marketerId } : {};
         const res = await api.patch(`/rfq/offers/${offerId}/accept`, payload, { errorMode: 'inline' });
+        this.invalidateRfqs('accept-offer');
         return getApiData(res);
       } catch (err) {
         const normalized = normalizeError(err);
@@ -70,12 +143,21 @@ export const useRfqStore = defineStore('rfq', {
     },
 
     async deleteRfq(id) {
+      this.ensureSync();
       this.submitting = true;
       this.error = null;
       this.fieldErrors = {};
       try {
         const response = await api.delete(`/rfq/${id}`, { errorMode: 'inline' });
         this.rfqs = this.rfqs.filter((item) => Number(item.id) !== Number(id));
+        this.adminRfqs = this.adminRfqs.filter((item) => Number(item.id) !== Number(id));
+        this.feedOrder = this.feedOrder.filter((itemId) => Number(itemId) !== Number(id));
+        if (this.feed[id]) {
+          const nextFeed = { ...this.feed };
+          delete nextFeed[id];
+          this.feed = nextFeed;
+        }
+        this.invalidateRfqs('delete-rfq');
         return getApiData(response);
       } catch (err) {
         const normalized = normalizeError(err);
@@ -88,6 +170,7 @@ export const useRfqStore = defineStore('rfq', {
     },
 
     async requestQuote(payload) {
+      this.ensureSync();
       this.submitting = true;
       this.error = null;
       this.fieldErrors = {};
@@ -105,6 +188,7 @@ export const useRfqStore = defineStore('rfq', {
     },
 
     async respondToQuote(quoteId, data) {
+      this.ensureSync();
       this.submitting = true;
       this.error = null;
       this.fieldErrors = {};
@@ -121,12 +205,33 @@ export const useRfqStore = defineStore('rfq', {
       }
     },
 
-    async fetchFeed() {
-      this.loading = true;
+    async fetchFeed(options = {}) {
+      this.ensureSync();
+      const { mode = 'cached', silent = false } = options;
+      const hasData = Object.keys(this.feed).length > 0;
+      if (mode === 'cached' && hasData && isFreshEnough(this.lastFetchedFeed)) {
+        return this.allLeads;
+      }
+
+      if (mode === 'revalidate' && hasData) {
+        if (!isFreshEnough(this.lastFetchedFeed)) {
+          this.fetchFeed({ mode: 'fresh', silent: true }).catch(() => {});
+        }
+        return this.allLeads;
+      }
+
+      if (!silent) {
+        this.loading = true;
+      }
       this.error = null;
       this.fieldErrors = {};
       try {
-        const response = await api.get('/rfq/feed', { errorMode: 'silent' });
+        const response = await api.get('/rfq/feed', {
+          errorMode: 'silent',
+          params: mode === 'fresh' || (mode === 'revalidate' && !hasData)
+            ? { fresh: 1, _: Date.now() }
+            : undefined,
+        });
         const dataArray = getApiCollection(response, ['items', 'rfqs']);
         const normalize = dataArray.reduce((acc, item) => {
           acc[item.id] = { ...this.feed[item.id], ...item };
@@ -136,33 +241,114 @@ export const useRfqStore = defineStore('rfq', {
         this.feed = { ...this.feed, ...normalize };
         this.feedOrder = dataArray.map((item) => item.id);
         this.success = true;
+        this.lastFetchedFeed = Date.now();
+        return this.allLeads;
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
         this.fieldErrors = normalized.fields;
+        if (mode === 'fresh') {
+          throw err;
+        }
       } finally {
-        this.loading = false;
+        if (!silent) {
+          this.loading = false;
+        }
       }
     },
 
-    async fetchPublicRfqs() {
-      this.loading = true;
+    async fetchPublicRfqs(options = {}) {
+      this.ensureSync();
+      const { mode = 'cached', silent = false } = options;
+      const hasData = this.rfqs.length > 0;
+      if (mode === 'cached' && hasData && isFreshEnough(this.lastFetchedPublic)) {
+        return this.rfqs;
+      }
+
+      if (mode === 'revalidate' && hasData) {
+        if (!isFreshEnough(this.lastFetchedPublic)) {
+          this.fetchPublicRfqs({ mode: 'fresh', silent: true }).catch(() => {});
+        }
+        return this.rfqs;
+      }
+
+      if (!silent) {
+        this.loading = true;
+      }
       this.error = null;
       this.fieldErrors = {};
       try {
-        const res = await api.get('/rfq', { errorMode: 'silent' });
+        const res = await api.get('/rfq', {
+          errorMode: 'silent',
+          params: mode === 'fresh' || (mode === 'revalidate' && !hasData)
+            ? { fresh: 1, _: Date.now() }
+            : undefined,
+        });
         this.rfqs = getApiCollection(res, ['rfqs', 'items']);
+        this.lastFetchedPublic = Date.now();
+        return this.rfqs;
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
         this.fieldErrors = normalized.fields;
         this.rfqs = [];
+        if (mode === 'fresh') {
+          throw err;
+        }
       } finally {
-        this.loading = false;
+        if (!silent) {
+          this.loading = false;
+        }
+      }
+    },
+
+    async fetchAdminRfqs(options = {}) {
+      this.ensureSync();
+      const { mode = 'cached', silent = false } = options;
+      const hasData = this.adminRfqs.length > 0;
+      if (mode === 'cached' && hasData && isFreshEnough(this.lastFetchedAdmin)) {
+        return this.adminRfqs;
+      }
+
+      if (mode === 'revalidate' && hasData) {
+        if (!isFreshEnough(this.lastFetchedAdmin)) {
+          this.fetchAdminRfqs({ mode: 'fresh', silent: true }).catch(() => {});
+        }
+        return this.adminRfqs;
+      }
+
+      if (!silent) {
+        this.loading = true;
+      }
+      this.error = null;
+      this.fieldErrors = {};
+      try {
+        const res = await api.get('/rfq', {
+          errorMode: 'silent',
+          params: mode === 'fresh' || (mode === 'revalidate' && !hasData)
+            ? { fresh: 1, _: Date.now() }
+            : undefined,
+        });
+        this.adminRfqs = getApiCollection(res, ['rfqs', 'items']);
+        this.lastFetchedAdmin = Date.now();
+        return this.adminRfqs;
+      } catch (err) {
+        const normalized = normalizeError(err);
+        this.error = normalized.message;
+        this.fieldErrors = normalized.fields;
+        this.adminRfqs = [];
+        if (mode === 'fresh') {
+          throw err;
+        }
+      } finally {
+        if (!silent) {
+          this.loading = false;
+        }
       }
     },
 
     async submitOffer(id, payload) {
+      this.ensureSync();
       this.submitting = true;
       this.error = null;
       this.fieldErrors = {};
@@ -176,6 +362,7 @@ export const useRfqStore = defineStore('rfq', {
           this.feed[id].vendor_has_declined = 0;
         }
 
+        this.invalidateRfqs('submit-offer');
         return getApiData(response);
       } catch (err) {
         const normalized = normalizeError(err);
@@ -188,6 +375,7 @@ export const useRfqStore = defineStore('rfq', {
     },
 
     async declineRfq(id) {
+      this.ensureSync();
       this.submitting = true;
       this.error = null;
       this.fieldErrors = {};
@@ -200,6 +388,7 @@ export const useRfqStore = defineStore('rfq', {
           };
         }
 
+        this.invalidateRfqs('decline-rfq');
         return getApiData(response);
       } catch (err) {
         const normalized = normalizeError(err);

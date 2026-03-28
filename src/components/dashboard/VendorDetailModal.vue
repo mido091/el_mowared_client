@@ -81,6 +81,9 @@
 
       <!-- Footer Actions -->
       <div class="p-6 px-8 border-t border-border bg-muted/30 flex justify-end gap-3">
+        <button @click="$emit('delete', vendor.id)" class="btn-ghost text-destructive hover:bg-destructive/5 font-black uppercase tracking-widest text-[11px]">
+          {{ t('common.delete', 'Delete') }}
+        </button>
         <button v-if="vendor.verification_status !== 'REJECTED'" @click="$emit('reject', vendor.id)" class="btn-ghost text-destructive hover:bg-destructive/5 font-black uppercase tracking-widest text-[11px]">
           {{ t('common.reject') }}
         </button>
@@ -109,7 +112,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'verify', 'reject']);
+const emit = defineEmits(['close', 'verify', 'reject', 'delete']);
 const { t, locale } = useI18n();
 
 const close = () => emit('close');

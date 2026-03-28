@@ -2,6 +2,14 @@ import { defineStore } from 'pinia';
 import api from '@/services/api';
 import { getApiData, getApiEnvelope } from '@/utils/apiResponse';
 import { normalizeError } from '@/utils/errorHandler';
+import { useCache } from '@/composables/useCache';
+import { createDomainSync } from '@/utils/domainSync';
+
+const PRODUCT_STALE_MS = 1000 * 60 * 5;
+const productSync = createDomainSync('products');
+
+let activeFetchPromise = null;
+let activeFetchKey = '';
 
 export const useVendorProductsStore = defineStore('vendorProducts', {
   state: () => ({
@@ -15,6 +23,10 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
       page: 1,
       limit: 10
     },
+    lastFetched: null,
+    lastQueryKey: '',
+    revision: 0,
+    syncReady: false,
     filters: {
       search: '',
       lifecycleStatus: '',
@@ -42,35 +54,118 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
       });
     },
 
-    async fetchVendorProducts() {
-      this.loading = true;
+    ensureSync() {
+      if (this.syncReady || typeof window === 'undefined') return;
+
+      productSync.ensure();
+      productSync.subscribe((payload = {}) => {
+        const incomingRevision = Number(payload.revision || 0);
+        if (incomingRevision && incomingRevision <= Number(this.revision || 0)) return;
+        this.revision = incomingRevision;
+        this.lastFetched = null;
+        this.fetchVendorProducts({ mode: 'fresh', silent: true }).catch(() => {});
+      });
+
+      const syncFromRevision = () => {
+        const storedRevision = productSync.getStoredRevision();
+        if (storedRevision > Number(this.revision || 0)) {
+          this.revision = storedRevision;
+          this.lastFetched = null;
+          this.fetchVendorProducts({ mode: 'fresh', silent: true }).catch(() => {});
+        }
+      };
+
+      window.addEventListener('focus', syncFromRevision);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') syncFromRevision();
+      });
+
+      this.syncReady = true;
+      syncFromRevision();
+    },
+
+    invalidateProducts(reason = 'updated') {
+      this.lastFetched = null;
+      this.revision = productSync.publish(reason);
+    },
+
+    async fetchVendorProducts(options = {}) {
+      this.ensureSync();
+      const mode = options.mode || 'cached';
+      const silent = Boolean(options.silent);
+      const fetchKey = JSON.stringify({
+        mode,
+        page: this.pagination.page,
+        limit: this.pagination.limit,
+        search: this.filters.search,
+        lifecycleStatus: this.filters.lifecycleStatus,
+        category: this.filters.category,
+      });
+      const dataKey = JSON.stringify({
+        page: this.pagination.page,
+        limit: this.pagination.limit,
+        search: this.filters.search,
+        lifecycleStatus: this.filters.lifecycleStatus,
+        category: this.filters.category,
+      });
+      const hasData = this.products.length > 0 && this.lastQueryKey === dataKey;
+      const isFreshEnough =
+        hasData &&
+        this.lastFetched &&
+        this.lastQueryKey === dataKey &&
+        Date.now() - this.lastFetched < PRODUCT_STALE_MS;
+
+      if (mode === 'cached' && isFreshEnough) return this.products;
+      if (mode === 'revalidate' && hasData) {
+        this.fetchVendorProducts({ mode: 'fresh', silent: true }).catch(() => {});
+        return this.products;
+      }
+
+      if (activeFetchPromise && activeFetchKey === fetchKey) return activeFetchPromise;
+
+      if (!silent) this.loading = true;
       this.error = null;
       this.fieldErrors = {};
 
-      try {
-        const params = {
-          page: this.pagination.page,
-          limit: this.pagination.limit
-        };
+      activeFetchPromise = (async () => {
+        try {
+          activeFetchKey = fetchKey;
+          const params = {
+            page: this.pagination.page,
+            limit: this.pagination.limit
+          };
 
-        if (this.filters.search) params.search = this.filters.search;
-        if (this.filters.lifecycleStatus) params.lifecycleStatus = this.filters.lifecycleStatus;
-        if (this.filters.category) params.category = this.filters.category;
+          if (this.filters.search) params.search = this.filters.search;
+          if (this.filters.lifecycleStatus) params.lifecycleStatus = this.filters.lifecycleStatus;
+          if (this.filters.category) params.category = this.filters.category;
+          if (mode === 'fresh' || (mode === 'revalidate' && !hasData)) {
+            params.fresh = 1;
+            params._ = Date.now();
+          }
 
-        const response = await api.get('/products/vendor/catalog/mine', { params, errorMode: 'silent' });
-        const resData = this.extractPayload(response) || {};
+          const response = await api.get('/products/vendor/catalog/mine', { params, errorMode: 'silent' });
+          const resData = this.extractPayload(response) || {};
 
-        this.products = resData.items || resData.products || [];
-        this.pagination.total = resData.pagination?.totalItems || resData.total || this.products.length;
-        this.success = true;
-      } catch (err) {
-        const normalized = normalizeError(err);
-        this.error = normalized.message;
-        this.fieldErrors = normalized.fields;
-        console.error(err);
-      } finally {
-        this.loading = false;
-      }
+          this.products = resData.items || resData.products || [];
+          this.pagination.total = resData.pagination?.totalItems || resData.total || this.products.length;
+          this.lastFetched = Date.now();
+          this.lastQueryKey = dataKey;
+          this.revision = Math.max(this.revision || 0, this.lastFetched);
+          this.success = true;
+          return this.products;
+        } catch (err) {
+          const normalized = normalizeError(err);
+          this.error = normalized.message;
+          this.fieldErrors = normalized.fields;
+          console.error(err);
+        } finally {
+          if (!silent) this.loading = false;
+          activeFetchPromise = null;
+          activeFetchKey = '';
+        }
+      })();
+
+      return activeFetchPromise;
     },
 
     async createProduct(productData, optimisticProduct = null) {
@@ -92,8 +187,10 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
       }
 
       try {
+        const { clearCache } = useCache();
         const response = await api.post('/products', productData, { errorMode: 'inline' });
         const createdProduct = this.extractProduct(response);
+        clearCache();
 
         if (createdProduct) {
           const tempIndex = this.products.findIndex((item) => item.id === tempId);
@@ -105,6 +202,11 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
         } else {
           await this.fetchVendorProducts();
         }
+
+        if (this.pagination.page === 1) {
+          await this.fetchVendorProducts();
+        }
+        this.invalidateProducts('created');
 
         return response;
       } catch (err) {
@@ -136,8 +238,10 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
       }
 
       try {
+        const { clearCache } = useCache();
         const response = await api.put(`/products/${id}`, productData, { errorMode: 'inline' });
         const updatedProduct = this.extractProduct(response);
+        clearCache();
 
         if (updatedProduct) {
           this.replaceProductInList(id, { ...updatedProduct, optimistic: false });
@@ -146,6 +250,9 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
         } else {
           await this.fetchVendorProducts();
         }
+
+        await this.fetchVendorProducts();
+        this.invalidateProducts('updated');
 
         return response;
       } catch (err) {
@@ -178,7 +285,11 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
       this.pagination.total = Math.max(0, this.pagination.total - 1);
 
       try {
+        const { clearCache } = useCache();
         await api.delete(`/products/${id}`);
+        clearCache();
+        await this.fetchVendorProducts();
+        this.invalidateProducts('deleted');
       } catch (err) {
         this.products = previousProducts;
         this.pagination.total = previousTotal;
@@ -194,8 +305,11 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
     async bulkDelete(ids) {
       this.loading = true;
       try {
+        const { clearCache } = useCache();
         await api.post('/products/bulk-delete', { ids });
+        clearCache();
         await this.fetchVendorProducts();
+        this.invalidateProducts('bulk-deleted');
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
@@ -237,6 +351,8 @@ export const useVendorProductsStore = defineStore('vendorProducts', {
       this.error = null;
       this.success = false;
       this.pagination = { total: 0, page: 1, limit: 10 };
+      this.lastFetched = null;
+      this.lastQueryKey = '';
       this.filters = { search: '', lifecycleStatus: '', category: '' };
     }
   }

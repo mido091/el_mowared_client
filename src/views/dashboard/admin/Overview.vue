@@ -100,7 +100,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { 
   ShieldCheck, Check, X, CreditCard, UserPlus, FileText
@@ -108,16 +109,18 @@ import {
 import api from '@/services/api';
 import { useUiStore } from '@/stores/ui';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useAdminVendorsStore } from '@/stores/adminVendorsStore';
 import DashCard from '@/components/dashboard/DashCard.vue';
 import DataTable from '@/components/ui/DataTable.vue';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
 const notificationStore = useNotificationStore();
-const loading = ref(true);
+const vendorsStore = useAdminVendorsStore();
+const { vendors, loading } = storeToRefs(vendorsStore);
 const stats = ref({ pending_payments: 0, open_rfqs: 0 });
-const pendingVendors = ref([]);
 const adminLogs = ref([]);
+const pendingVendors = computed(() => vendors.value.filter((item) => `${item.verification_status || ''}`.toUpperCase() === 'PENDING'));
 
 const columns = [
   { key: 'company_name', label: t('vendor.companyName', 'Vendor Detail') },
@@ -128,9 +131,8 @@ const formatDate = (d) => new Date(d).toLocaleDateString();
 
 const verifyVendor = async (id) => {
   try {
-    await api.put(`/admin/vendors/${id}/verify`);
+    await vendorsStore.verifyVendor(id);
     uiStore.showToast(t('admin.vendorApproved', 'Vendor approved successfully'), 'success');
-    fetchData();
   } catch (err) { uiStore.showToast(t('admin.approval_failed'), 'error'); }
 };
 
@@ -140,27 +142,21 @@ const rejectVendor = async (id) => {
     t('common.confirm')
   ))) return;
   try {
-    await api.put(`/admin/vendors/${id}/reject`);
+    await vendorsStore.rejectVendor(id);
     uiStore.showToast(t('admin.vendorRejectedToast'), 'warning');
-    fetchData();
   } catch (err) { uiStore.showToast(t('admin.rejection_failed'), 'error'); }
 };
 
 const fetchData = async () => {
-  loading.value = true;
   try {
-    const [statRes, vendorRes] = await Promise.all([
+    const [statRes] = await Promise.all([
       api.get('/admin/stats'),
-      api.get('/admin/vendors?status=PENDING')
+      vendorsStore.fetchVendors({ status: 'PENDING', mode: 'revalidate' })
     ]);
     // api.js interceptor already unwraps response.data — use directly
     stats.value = statRes || { pending_payments: 0, open_rfqs: 0 };
-    const vendorData = Array.isArray(vendorRes) ? vendorRes : (vendorRes?.data ?? []);
-    pendingVendors.value = vendorData;
-    // Admin logs placeholder
-    adminLogs.value = []; 
+    adminLogs.value = [];
   } catch (err) { console.error('Admin Error:', err); }
-  finally { loading.value = false; }
 };
 
 onMounted(fetchData);

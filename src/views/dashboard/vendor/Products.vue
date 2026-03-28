@@ -281,7 +281,10 @@ const buildOptimisticProduct = (formData) => ({
   description_en: formData.description_en || formData.description_ar,
   category_id: Number(formData.category_id),
   price: Number(formData.price || 0),
-  discount_price: Number(formData.discount_price || 0),
+  discount_price:
+    formData.discount_price === '' || formData.discount_price === null || formData.discount_price === undefined
+      ? null
+      : Number(formData.discount_price),
   min_order_quantity: Number(formData.min_order_quantity || 1),
   quantity_available: Number(formData.quantity_available || 0),
   specs: formData.specs || [],
@@ -313,7 +316,13 @@ const handleSave = async (formData) => {
     payload.append('description_ar', formData.description_ar);
     payload.append('description_en', formData.description_en || formData.description_ar);
     payload.append('price', formData.price);
-    payload.append('discountPrice', formData.discount_price || '');
+    if (
+      formData.discount_price !== '' &&
+      formData.discount_price !== null &&
+      formData.discount_price !== undefined
+    ) {
+      payload.append('discountPrice', formData.discount_price);
+    }
     payload.append('minOrderQuantity', formData.min_order_quantity);
     payload.append('quantityAvailable', formData.quantity_available || 0);
     payload.append('categoryId', formData.category_id);
@@ -373,7 +382,7 @@ const handleBulkDelete = async (ids) => {
 };
 
 onMounted(async () => {
-  await categoryStore.fetchCategories();
+  await categoryStore.fetchCategories({ mode: 'revalidate' });
 
   try {
     const profileRes = await api.get('/vendor/me');

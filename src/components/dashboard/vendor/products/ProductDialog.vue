@@ -243,7 +243,10 @@
                     </Transition>
                   </div>
                   <div class="space-y-4 group/field">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 group-focus-within/field:text-primary transition-colors">{{ t('products.maxPrice') }}</label>
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 group-focus-within/field:text-primary transition-colors">
+                      {{ t('products.maxPrice') }}
+                      <span class="text-slate-300 font-normal ml-1">({{ locale === 'ar' ? 'اختياري' : 'Optional' }})</span>
+                    </label>
                     <div class="relative">
                       <input 
                         v-model.number="form.discount_price" 
@@ -520,7 +523,7 @@ const quantityAvailableLabel = computed(() => (
 const hasPriceError = computed(() => {
   const max = form.discount_price;
   if (max === '' || max === null || max === undefined || Number(max) === 0) return false;
-  return Number(max) <= Number(form.price || 0);
+  return Number(max) < Number(form.price || 0);
 });
 const errorText = computed(() => resolveLocalizedText(props.errorMessage, locale.value, ''));
 
@@ -585,7 +588,7 @@ const resetForm = () => {
     description_ar: '',
     description_en: '',
     price: '',
-    discount_price: '',
+      discount_price: '',
     min_order_quantity: 1,
     quantity_available: 0,
     specs: [],
@@ -654,7 +657,7 @@ watch(() => props.modelValue, (isOpen) => {
         description_ar: newVal.description_ar || '',
         description_en: newVal.description_en || '',
         price: newVal.price || '',
-        discount_price: newVal.discount_price || '',
+        discount_price: newVal.discount_price ?? '',
         min_order_quantity: newVal.min_order_quantity || 1,
         quantity_available: Number(newVal.quantity_available || 0),
         specs: Array.isArray(rawSpecs) ? rawSpecs : [],

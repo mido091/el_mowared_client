@@ -10,7 +10,7 @@
     >
       <div
         v-if="store.activeDialog"
-        class="layer-modal fixed inset-0 flex items-center justify-center p-4 sm:p-6"
+        class="layer-modal fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6"
         role="dialog"
         aria-modal="true"
       >
