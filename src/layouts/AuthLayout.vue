@@ -15,8 +15,8 @@
           {{ t('nav.home') }}
         </router-link>
         <div class="mb-8 flex justify-center">
-          <router-link v-if="settingsStore.logo" to="/" class="block transition-transform hover:scale-105 duration-500">
-            <img :src="settingsStore.logo" :alt="settingsStore.siteName" class="h-20 sm:h-24 w-auto object-contain rounded-lg" />
+          <router-link v-if="settingsStore.activeLogo" to="/" class="block transition-transform hover:scale-105 duration-500">
+            <img :src="settingsStore.activeLogo" :alt="settingsStore.siteName" class="h-20 sm:h-24 w-auto object-contain rounded-lg" />
           </router-link>
           <div v-else class="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-sm border border-white/20 transition-transform hover:scale-105 duration-500">
              <span class="text-white font-black text-3xl">{{ settingsStore.siteName.substring(0,2).toUpperCase() }}</span>
@@ -44,8 +44,8 @@
         <!-- Mobile logo and return to home -->
         <div class="lg:hidden flex items-center justify-between mb-8">
           <router-link to="/" class="flex items-center gap-3">
-            <div v-if="settingsStore.logo" class="h-10 transition-transform hover:scale-105 duration-300">
-              <img :src="settingsStore.logo" :alt="settingsStore.siteName" class="h-full w-auto object-contain rounded-md" />
+            <div v-if="settingsStore.activeLogo" class="h-10 transition-transform hover:scale-105 duration-300">
+              <img :src="settingsStore.activeLogo" :alt="settingsStore.siteName" class="h-full w-auto object-contain rounded-md" />
             </div>
             <div v-else class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
               <span class="text-primary font-black">{{ settingsStore.siteName.substring(0,2).toUpperCase() }}</span>

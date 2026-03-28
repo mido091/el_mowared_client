@@ -56,10 +56,10 @@
               </div>
             </div>
 
-            <!-- Logo & Favicon -->
-            <div class="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Day / Night Logo & Favicon -->
+            <div class="pt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div class="form-group">
-                <label class="form-label uppercase text-[10px] tracking-[0.2em] font-black">{{ t('settings.form.brand_logo') }}</label>
+                <label class="form-label uppercase text-[10px] tracking-[0.2em] font-black">{{ t('settings.form.brand_logo_day') }}</label>
                 <div class="mt-2 relative group w-full h-32 bg-muted/30 rounded-2xl border-2 border-dashed border-border/50 flex items-center justify-center overflow-hidden transition-all hover:border-primary/50">
                   <img v-if="previews.logo || store.logo" :src="previews.logo || store.logo" class="max-h-20 max-w-[80%] object-contain" />
                   <div v-else class="text-center">
@@ -70,6 +70,26 @@
                     <Upload class="w-5 h-5 me-2" />
                     <span class="text-xs font-black uppercase">{{ t('common.upload') }}</span>
                     <input type="file" class="hidden" accept="image/*" @change="e => handleFile(e, 'logo')" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label uppercase text-[10px] tracking-[0.2em] font-black">{{ t('settings.form.brand_logo_night') }}</label>
+                <div class="mt-2 relative group w-full h-32 bg-muted/30 rounded-2xl border-2 border-dashed border-border/50 flex items-center justify-center overflow-hidden transition-all hover:border-primary/50">
+                  <img
+                    v-if="previews.darkLogo || store.darkLogo || previews.logo || store.logo"
+                    :src="previews.darkLogo || store.darkLogo || previews.logo || store.logo"
+                    class="max-h-20 max-w-[80%] object-contain"
+                  />
+                  <div v-else class="text-center">
+                    <ImagePlus class="w-8 h-8 text-muted-foreground mx-auto mb-1 opacity-20" />
+                    <span class="text-[10px] font-bold text-muted-foreground uppercase opacity-40">{{ t('common.noData') }}</span>
+                  </div>
+                  <label class="absolute inset-0 cursor-pointer flex items-center justify-center bg-primary/80 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Upload class="w-5 h-5 me-2" />
+                    <span class="text-xs font-black uppercase">{{ t('common.upload') }}</span>
+                    <input type="file" class="hidden" accept="image/*" @change="e => handleFile(e, 'darkLogo')" />
                   </label>
                 </div>
               </div>
@@ -529,12 +549,14 @@ const socialPlatformOptions = [
 
 const files = reactive({
   logo: null,
+  darkLogo: null,
   favicon: null,
   ogImage: null
 });
 
 const previews = reactive({
   logo: null,
+  darkLogo: null,
   favicon: null,
   ogImage: null
 });
@@ -693,6 +715,7 @@ const saveAll = async () => {
 
     // 2. Upload Binaries Individually
     if (files.logo) await store.updateMedia('site_logo', files.logo);
+    if (files.darkLogo) await store.updateMedia('site_logo_dark', files.darkLogo);
     if (files.favicon) await store.updateMedia('site_favicon', files.favicon);
     if (files.ogImage) await store.updateMedia('seo_og_image', files.ogImage);
 

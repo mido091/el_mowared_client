@@ -10,8 +10,8 @@
           <div class="mx-auto flex max-w-3xl flex-col items-center">
             <div class="flex min-h-[112px] items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.05] px-8 py-6 shadow-[0_24px_80px_-34px_rgba(0,0,0,0.45)] backdrop-blur-sm">
               <AppImage
-                v-if="settingsStore.logo"
-                :src="settingsStore.logo"
+                v-if="settingsStore.activeLogo"
+                :src="settingsStore.activeLogo"
                 :alt="siteName"
                 :width="384"
                 :height="96"
@@ -202,7 +202,7 @@ useSeo(() => ({
   title: locale.value === 'ar' ? `ماذا عنا | ${siteName.value}` : `About Us | ${siteName.value}`,
   description: siteDescription.value,
   canonical: '/about-us',
-  image: settingsStore.logo || '',
+  image: settingsStore.logo || settingsStore.activeLogo || '',
   ogType: 'website',
   structuredData: [
     {
@@ -211,7 +211,7 @@ useSeo(() => ({
       name: siteName.value,
       description: siteDescription.value,
       url: `${window.location.origin}/about-us`,
-      logo: settingsStore.logo || undefined
+      logo: settingsStore.logo || settingsStore.activeLogo || undefined
     },
     {
       '@context': 'https://schema.org',

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import api from '@/services/api';
 import { getApiData } from '@/utils/apiResponse';
+import { useUiStore } from '@/stores/ui';
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
@@ -10,6 +11,7 @@ export const useSettingsStore = defineStore('settings', {
     siteDescriptionAr: '',
     siteDescriptionEn: '',
     logo: null,
+    darkLogo: null,
     favicon: null,
     socialLinks: [],
     defaultLanguage: 'ar',
@@ -40,6 +42,21 @@ export const useSettingsStore = defineStore('settings', {
     loaded: false,
     _settings: {}
   }),
+
+  getters: {
+    activeLogo: (state) => {
+      try {
+        const uiStore = useUiStore();
+        if (uiStore.isDark && state.darkLogo) {
+          return state.darkLogo;
+        }
+      } catch {
+        // Fallback to the default logo when the UI store is not ready yet.
+      }
+
+      return state.logo || state.darkLogo || null;
+    }
+  },
 
   actions: {
     get(key) {
@@ -114,6 +131,7 @@ export const useSettingsStore = defineStore('settings', {
           };
 
           this.logo = getUrl(d.site_logo);
+          this.darkLogo = getUrl(d.site_logo_dark);
           this.favicon = getUrl(d.site_favicon);
           this.seo.ogImage = getUrl(d.seo_og_image);
           this.socialLinks = parseSocialLinks(d.social_links);

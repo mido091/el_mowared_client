@@ -42,7 +42,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://el-mowared-server.vercel.app',
+        target: process.env.VITE_DEV_PROXY_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
     },

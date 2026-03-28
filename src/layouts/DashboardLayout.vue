@@ -21,7 +21,7 @@
       <div class="h-16 flex items-center justify-between px-6 border-b border-border/50 shrink-0 relative">
         <router-link to="/" class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center text-white shrink-0 shadow-lg shadow-primary/20 overflow-hidden">
-            <img v-if="settingsStore.logo" :src="settingsStore.logo" class="w-full h-full object-contain bg-white" alt="Site Logo" />
+            <img v-if="settingsStore.activeLogo" :src="settingsStore.activeLogo" class="w-full h-full object-contain" alt="Site Logo" />
             <Package v-else class="w-5 h-5" />
           </div>
           <span v-if="isMobile || !collapsed" class="text-lg font-black tracking-tighter text-foreground uppercase">

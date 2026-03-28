@@ -217,7 +217,7 @@ import { useI18n } from 'vue-i18n';
 import { useIntersectionObserver } from '@vueuse/core';
 import {
   Search, ArrowRight, Camera, Cpu, Activity, Radio, Database, Lock, Flame,
-  Package, FileText, Users, ShoppingBag, Globe, LayoutGrid,
+  Package, FileText, Users, UserCheck, Globe, LayoutGrid,
   Wifi, Monitor, Box, ShieldCheck
 } from 'lucide-vue-next';
 import api from '@/services/api';
@@ -248,7 +248,8 @@ const marketplaceSummary = ref({
   total_vendors: 0,
   total_products: 0,
   total_completed_orders: 0,
-  total_countries: 0
+  total_countries: 0,
+  total_users: 0
 });
 
 useSeo(() => ({
@@ -321,8 +322,8 @@ const formatMetric = (value) => {
 const stats = computed(() => [
   { icon: Users, value: formatMetric(marketplaceSummary.value.total_vendors), label: t('home.statVendors') },
   { icon: Package, value: formatMetric(marketplaceSummary.value.total_products), label: t('home.statProducts') },
-  { icon: ShoppingBag, value: formatMetric(marketplaceSummary.value.total_completed_orders), label: t('home.statOrders') },
-  { icon: Globe, value: formatMetric(marketplaceSummary.value.total_countries), label: t('home.statCountries') }
+  { icon: UserCheck, value: formatMetric(marketplaceSummary.value.total_users), label: t('home.statUsers') },
+  { icon: Globe, value: '15+', label: t('home.statRegions') }
 ]);
 
 const popularSearches = computed(() => {

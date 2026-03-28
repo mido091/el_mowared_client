@@ -88,7 +88,7 @@ export const useChatStore = defineStore('chat', {
       const isPrivileged = ['admin', 'owner'].includes(`${authStore.user?.role || ''}`.toLowerCase());
       if (isPrivileged) return false;
       const status = `${conversation.status || ''}`.toLowerCase();
-      return `${conversation.type || ''}`.toUpperCase() === 'SUPPORT' && status === 'assigned';
+      return `${conversation.type || ''}`.toUpperCase() === 'SUPPORT' && status === 'assigned' && !!conversation.admin_id;
     }
   },
 
@@ -140,10 +140,15 @@ export const useChatStore = defineStore('chat', {
       }
 
       const status = `${conversation.status || ''}`.toLowerCase();
+      const hasAssignedAdmin = !!conversation.admin_id;
+      const previousAvailability = typeof this.supportAvailability?.available === 'boolean'
+        ? this.supportAvailability.available
+        : false;
+
       this.supportAvailability = {
-        available: status !== 'waiting',
+        available: hasAssignedAdmin ? true : (status === 'waiting' ? previousAvailability : true),
         estimatedResponseMinutes: conversation.estimated_response_minutes || null,
-        locked: ['waiting', 'assigned'].includes(status)
+        locked: hasAssignedAdmin && status === 'assigned'
       };
     },
 
@@ -232,6 +237,43 @@ export const useChatStore = defineStore('chat', {
       return conversation;
     },
 
+    async refreshSupportAvailability(conversationId = null) {
+      try {
+        const activeSupportConversationId = conversationId || this.activeConversation?.id || this.supportConversation?.id;
+        const res = await api.get('/chats/support/availability', {
+          params: activeSupportConversationId ? { conversationId: Number(activeSupportConversationId) } : {},
+          errorMode: 'silent'
+        });
+        const data = getApiData(res) || {};
+        this.supportAvailability = {
+          available: !!data.available,
+          estimatedResponseMinutes: data.estimatedResponseMinutes || null,
+          locked: !!data.assignedAdminId && `${this.activeConversation?.status || ''}`.toLowerCase() === 'assigned'
+        };
+
+        if (activeSupportConversationId) {
+          const idx = this.conversations.findIndex((item) => Number(item.id) === Number(activeSupportConversationId));
+          if (idx !== -1) {
+            this.conversations[idx] = {
+              ...this.conversations[idx],
+              estimated_response_minutes: data.estimatedResponseMinutes || this.conversations[idx].estimated_response_minutes || null
+            };
+          }
+
+          if (this.activeConversation?.id && Number(this.activeConversation.id) === Number(activeSupportConversationId)) {
+            this.activeConversation = {
+              ...this.activeConversation,
+              estimated_response_minutes: data.estimatedResponseMinutes || this.activeConversation.estimated_response_minutes || null
+            };
+          }
+        }
+
+        return data;
+      } catch (error) {
+        return null;
+      }
+    },
+
     async startRfqChat(vendorId, rfqId, messageText, metadata = null, extra = {}) {
       return this.startChat(vendorId, null, messageText, 'RFQ', metadata, {
         relatedRfqId: rfqId,
@@ -312,6 +354,9 @@ export const useChatStore = defineStore('chat', {
         await this.fetchMessages(conversation.id);
         socketService.emit('join_conversation', conversation.id);
         this._syncSupportAvailability(conversation);
+        if (`${conversation.type || ''}`.toUpperCase() === 'SUPPORT') {
+          await this.refreshSupportAvailability(conversation.id);
+        }
         const idx = this.conversations.findIndex((item) => Number(item.id) === Number(conversation.id));
         if (idx !== -1) {
           this.conversations[idx].unread_count = 0;
@@ -358,14 +403,21 @@ export const useChatStore = defineStore('chat', {
         this.fetchConversations();
       }
 
-        if (this.activeConversation?.id === conversationId && msg.type === 'SYSTEM') {
-          const supportAvailability = msg.metadata?.supportAvailability;
-          if (supportAvailability === 'busy') {
-            this.activeConversation.status = 'waiting';
-          }
-          if (supportAvailability === 'available') {
-            this.activeConversation.status = 'assigned';
-          }
+      if (this.activeConversation?.id === conversationId && msg.type === 'SYSTEM') {
+        const supportAvailability = msg.metadata?.supportAvailability;
+        if (supportAvailability === 'busy' || supportAvailability === 'available') {
+          this.supportAvailability = {
+            ...this.supportAvailability,
+            available: supportAvailability === 'available',
+            estimatedResponseMinutes: msg.metadata?.estimatedResponseMinutes || this.supportAvailability.estimatedResponseMinutes || null
+          };
+        }
+        if (msg.metadata?.estimatedResponseMinutes) {
+          this.activeConversation = {
+            ...this.activeConversation,
+            estimated_response_minutes: msg.metadata.estimatedResponseMinutes
+          };
+        }
       }
 
       this._syncSupportAvailability(this.activeConversation);
@@ -400,6 +452,11 @@ export const useChatStore = defineStore('chat', {
       socketService.on('typing_stop', ({ conversationId }) => this.setTypingStatus(conversationId, false));
       socketService.on('message_read_update', (data) => this.handleMessageRead(data));
       socketService.on('user_presence', ({ userId, status }) => this.setOnlineStatus(userId, status === 'online'));
+      socketService.on('user_presence', () => {
+        if (`${this.activeConversation?.type || ''}`.toUpperCase() === 'SUPPORT') {
+          this.refreshSupportAvailability(this.activeConversation.id);
+        }
+      });
       socketService.on('support_assigned', ({ conversationId, adminId, status }) => {
         const authStore = useAuthStore();
         const currentRole = `${authStore.user?.role || ''}`.toLowerCase();

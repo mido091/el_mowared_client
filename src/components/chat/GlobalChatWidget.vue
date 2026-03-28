@@ -38,7 +38,7 @@
               <Headset class="w-8 h-8" />
             </div>
             <h4 class="mt-4 text-lg font-black text-slate-800 dark:text-slate-100">
-              {{ locale === 'ar' ? 'مرحباً بك في المورد' : 'Welcome to Elmowared' }}
+              {{ locale === 'ar' ? 'مرحبًا بك في المورد' : 'Welcome to Elmowared' }}
             </h4>
             <p class="mt-2 text-sm leading-7 text-slate-500 dark:text-slate-400">
               {{ locale === 'ar' ? 'كيف يمكننا مساعدتك اليوم؟' : 'How can we help you today?' }}
@@ -107,7 +107,7 @@
           class="mb-3 rounded-2xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 px-4 py-3 text-xs text-sky-700 dark:text-sky-300"
         >
           {{ locale === 'ar'
-            ? `الرد المتوقع خلال ${chatStore.supportAvailability.estimatedResponseMinutes} دقيقة تقريباً.`
+            ? `الرد المتوقع خلال ${chatStore.supportAvailability.estimatedResponseMinutes} دقيقة تقريبًا.`
             : `Estimated response time is about ${chatStore.supportAvailability.estimatedResponseMinutes} minutes.` }}
         </div>
 
@@ -194,7 +194,11 @@ const visibleMessages = computed(() => {
 });
 
 const isInputLocked = computed(() => chatStore.activeConversationIsLocked);
-const showBusyNotice = computed(() => !!currentSupportConversation.value && `${currentSupportConversation.value.status || ''}`.toLowerCase() === 'waiting');
+const showBusyNotice = computed(() => {
+  if (!currentSupportConversation.value) return false;
+  const status = `${currentSupportConversation.value.status || ''}`.toLowerCase();
+  return status === 'waiting' && !currentSupportConversation.value.admin_id && !chatStore.supportAvailability.available;
+});
 
 const inputPlaceholder = computed(() => {
   if (isInputLocked.value) {
@@ -207,10 +211,20 @@ const supportStatusText = computed(() => {
   if (!currentSupportConversation.value) {
     return locale.value === 'ar' ? 'جاهز لاستقبال استفسارك' : 'Ready to help';
   }
+
   const status = `${currentSupportConversation.value.status || ''}`.toLowerCase();
-  if (status === 'assigned') return locale.value === 'ar' ? 'يرجى الانتظار حتى يتم استلام طلبك' : 'Please wait while an agent takes your request';
-  if (status === 'waiting') return locale.value === 'ar' ? 'في انتظار استفسارك أو رد الدعم' : 'Waiting for your inquiry or support reply';
-  if (status === 'active') return locale.value === 'ar' ? 'محادثة نشطة مع الدعم' : 'Live support conversation';
+  if (status === 'assigned' && currentSupportConversation.value.admin_id) {
+    return locale.value === 'ar' ? 'يرجى الانتظار حتى يتم استلام طلبك' : 'Please wait while an agent takes your request';
+  }
+  if (status === 'waiting' && chatStore.supportAvailability.available) {
+    return locale.value === 'ar' ? 'فريق الدعم متاح وسيتم استلام طلبك قريبًا' : 'Support is available and your request will be picked up shortly';
+  }
+  if (status === 'waiting') {
+    return locale.value === 'ar' ? 'في انتظار استفسارك أو رد الدعم' : 'Waiting for your inquiry or support reply';
+  }
+  if (status === 'active') {
+    return locale.value === 'ar' ? 'محادثة نشطة مع الدعم' : 'Live support conversation';
+  }
   return locale.value === 'ar' ? 'جلسة دعم' : 'Support session';
 });
 
@@ -218,7 +232,8 @@ const supportStatusDotClass = computed(() => {
   if (!currentSupportConversation.value) return 'bg-emerald-400 animate-pulse';
   const status = `${currentSupportConversation.value.status || ''}`.toLowerCase();
   if (status === 'active') return 'bg-emerald-400 animate-pulse';
-  if (status === 'assigned') return 'bg-sky-400 animate-pulse';
+  if (status === 'assigned' && currentSupportConversation.value.admin_id) return 'bg-sky-400 animate-pulse';
+  if (status === 'waiting' && chatStore.supportAvailability.available) return 'bg-emerald-400 animate-pulse';
   if (status === 'waiting') return 'bg-amber-400';
   return 'bg-slate-300';
 });
@@ -248,6 +263,7 @@ async function startSupport() {
 
   if (currentSupportConversation.value) {
     await chatStore.setActiveConversation(currentSupportConversation.value);
+    await chatStore.refreshSupportAvailability(currentSupportConversation.value.id);
     return;
   }
 
@@ -257,6 +273,7 @@ async function startSupport() {
     const result = await chatStore.startSupportChat(initialText, locale.value);
     if (result?.conversation?.id) {
       await chatStore.setActiveConversation(result.conversation);
+      await chatStore.refreshSupportAvailability(result.conversation.id);
     }
   } catch (error) {
     console.error('[GlobalChatWidget.startSupport]', error);
@@ -271,8 +288,12 @@ async function toggle() {
   if (isOpen.value) {
     await chatStore.ensureConversationsLoaded();
   }
-  if (isOpen.value && currentSupportConversation.value && chatStore.activeConversation?.id !== currentSupportConversation.value.id) {
-    await chatStore.setActiveConversation(currentSupportConversation.value);
+  if (isOpen.value && currentSupportConversation.value) {
+    if (chatStore.activeConversation?.id !== currentSupportConversation.value.id) {
+      await chatStore.setActiveConversation(currentSupportConversation.value);
+    } else {
+      await chatStore.refreshSupportAvailability(currentSupportConversation.value.id);
+    }
     scrollToBottom();
   }
   if (!isOpen.value) {

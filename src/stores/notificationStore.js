@@ -129,7 +129,13 @@ export const useNotificationStore = defineStore('notifications', {
       const auth = useAuthStore();
       if (!auth.isAuthenticated || this.initialized) return;
 
-      socketService.connect(auth.token);
+      const connected = socketService.connect(auth.token);
+      if (!connected) {
+        this.connected = false;
+        this.initialized = false;
+        return;
+      }
+
       this.connected = true;
       this.initialized = true;
 

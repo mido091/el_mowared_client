@@ -102,12 +102,12 @@ onMounted(() => {
 });
 
 watch(
-  () => authStore.isAuthenticated,
-  (isAuthenticated) => {
+  () => [authStore.isAuthenticated, authStore.user?.id],
+  ([isAuthenticated, userId]) => {
     cleanupRealtimeInit?.();
     cleanupRealtimeInit = null;
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !userId) {
       globalWidgetReady.value = false;
       return;
     }
@@ -131,7 +131,7 @@ watch(
 watch(
   () => route.path,
   (path) => {
-    if (!authStore.isAuthenticated) return;
+    if (!authStore.isAuthenticated || !authStore.user?.id) return;
     if (!path.includes('/chat')) return;
 
     cleanupRealtimeInit?.();

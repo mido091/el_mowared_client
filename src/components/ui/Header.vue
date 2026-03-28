@@ -20,12 +20,12 @@
     <div class="container-wide flex items-center h-16 gap-4">
       <!-- Logo -->
       <router-link to="/" class="flex items-center gap-2 shrink-0 me-4 group">
-        <div v-if="!settingsStore.logo" class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm group-hover:bg-primary/20 transition-all">
+        <div v-if="!settingsStore.activeLogo" class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm group-hover:bg-primary/20 transition-all">
           <span class="text-primary font-black text-xs tracking-tighter">{{ settingsStore.siteName.substring(0,2).toUpperCase() }}</span>
         </div>
         <AppImage
           v-else
-          :src="settingsStore.logo"
+          :src="settingsStore.activeLogo"
           :alt="settingsStore.siteName"
           :width="120"
           :height="40"

@@ -7,8 +7,8 @@
             <router-link to="/" class="inline-flex items-center gap-3 group max-w-full">
               <div class="h-12 min-w-12 px-3 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-black/10 group-hover:scale-[1.03] transition-transform">
                 <AppImage
-                  v-if="settingsStore.logo"
-                  :src="settingsStore.logo"
+                  v-if="settingsStore.activeLogo"
+                  :src="settingsStore.activeLogo"
                   :alt="settingsStore.siteName"
                   :width="96"
                   :height="32"
