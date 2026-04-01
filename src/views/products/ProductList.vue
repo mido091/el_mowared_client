@@ -89,6 +89,7 @@
                       :placeholder="allCategoriesLabel"
                       :sheet-title="filtersTitle"
                       :sheet-kicker="categoryLabel"
+                      mobile-behavior="inline"
                       searchable
                     />
 
@@ -100,6 +101,7 @@
                       :placeholder="allChildCategoriesLabel"
                       :sheet-title="filtersTitle"
                       :sheet-kicker="childCategoryLabel"
+                      mobile-behavior="inline"
                       searchable
                     />
 
@@ -277,6 +279,7 @@
               :placeholder="allCategoriesLabel"
               :sheet-title="filtersTitle"
               :sheet-kicker="categoryLabel"
+              mobile-behavior="inline"
               searchable
             />
 
@@ -288,6 +291,7 @@
               :placeholder="allChildCategoriesLabel"
               :sheet-title="filtersTitle"
               :sheet-kicker="childCategoryLabel"
+              mobile-behavior="inline"
               searchable
             />
 

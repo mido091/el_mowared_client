@@ -86,9 +86,60 @@
       </Transition>
     </div>
 
+    <Transition name="slide-down">
+      <div
+        v-if="open && isInlineMobile"
+        class="layer-dropdown mt-2"
+      >
+        <div class="responsive-select-menu">
+          <div v-if="searchable" class="border-b border-border/70 p-3">
+            <div class="relative">
+              <Search class="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                v-model.trim="search"
+                type="text"
+                :placeholder="searchPlaceholder"
+                class="form-input ps-10"
+              />
+            </div>
+          </div>
+
+          <div class="max-h-72 overflow-y-auto custom-scrollbar p-2">
+            <button
+              v-for="option in filteredOptions"
+              :key="option.key"
+              type="button"
+              class="responsive-select-option"
+              :class="{ 'responsive-select-option-active': isSelected(option.value) }"
+              :disabled="option.disabled"
+              @click="selectOption(option)"
+            >
+              <div class="min-w-0 flex-1 text-start">
+                <div class="truncate text-sm font-bold">{{ option.label }}</div>
+                <div
+                  v-if="option.description"
+                  class="mt-1 truncate text-[11px] text-muted-foreground"
+                >
+                  {{ option.description }}
+                </div>
+              </div>
+              <Check v-if="isSelected(option.value)" class="h-4 w-4 shrink-0 text-primary" />
+            </button>
+
+            <div
+              v-if="!filteredOptions.length"
+              class="rounded-2xl border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground"
+            >
+              {{ emptyLabel }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <Teleport to="body">
       <Transition name="fade">
-        <div v-if="open && isMobile" class="fixed inset-0 layer-modal">
+        <div v-if="open && usesMobileSheet" class="fixed inset-0 layer-modal">
           <button
             type="button"
             class="app-backdrop layer-backdrop"
@@ -215,6 +266,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  mobileBehavior: {
+    type: String,
+    default: 'sheet',
+  },
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
@@ -224,6 +279,8 @@ const open = ref(false);
 const search = ref('');
 const isMobile = useMediaQuery('(max-width: 767px)');
 const previousBodyOverflow = ref('');
+const isInlineMobile = computed(() => isMobile.value && props.mobileBehavior === 'inline');
+const usesMobileSheet = computed(() => isMobile.value && !isInlineMobile.value);
 
 const normalizedOptions = computed(() =>
   props.options.map((option, index) => {
@@ -289,7 +346,7 @@ function selectOption(option) {
 }
 
 function handleOutsideClick(event) {
-  if (!open.value || isMobile.value) return;
+  if (!open.value || usesMobileSheet.value) return;
   if (!rootRef.value?.contains(event.target)) {
     close();
   }
@@ -306,7 +363,7 @@ watch(open, (value) => {
     search.value = '';
   }
 
-  if (typeof document !== 'undefined' && isMobile.value) {
+  if (typeof document !== 'undefined' && usesMobileSheet.value) {
     if (value) {
       previousBodyOverflow.value = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
