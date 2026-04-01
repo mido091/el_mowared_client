@@ -109,6 +109,16 @@
                 <p v-if="productShortDescription" class="max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300 md:text-base">
                   {{ productShortDescription }}
                 </p>
+                <div
+                  v-if="product?.model_number"
+                  class="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--primary))/0.18] bg-[hsl(var(--primary))/0.08] px-4 py-2 text-sm font-black text-[hsl(var(--primary))]"
+                  dir="ltr"
+                >
+                  <span class="text-[11px] uppercase tracking-[0.22em] text-[hsl(var(--primary))/0.72]">
+                    {{ locale === 'ar' ? 'رقم الموديل' : 'Model No.' }}
+                  </span>
+                  <span>{{ product.model_number }}</span>
+                </div>
               </div>
 
               <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -154,22 +164,11 @@
                 </div>
                 <div class="min-h-[122px] rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/60">
                   <p class="ui-field-label mb-2">
-                    {{ availabilityLabel }}
+                    {{ supplierPhoneLabel }}
                   </p>
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="relative inline-flex h-3 w-3 rounded-full"
-                      :class="isVendorOnline ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'"
-                    >
-                      <span
-                        v-if="isVendorOnline"
-                        class="absolute inset-0 animate-ping rounded-full bg-emerald-500/60"
-                      />
-                    </span>
-                    <p class="text-sm font-bold text-[#1e293b] dark:text-white">
-                      {{ isVendorOnline ? onlineLabel : offlineLabel }}
-                    </p>
-                  </div>
+                  <p class="text-xl font-black leading-tight text-[#1e293b] dark:text-white" dir="ltr">
+                    {{ vendorPhoneDisplay }}
+                  </p>
                 </div>
               </div>
 
@@ -237,10 +236,10 @@
                 </div>
                 <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/70">
                   <p class="ui-kicker mb-1">
-                    {{ liveStatusLabel }}
+                    {{ supplierPhoneLabel }}
                   </p>
-                  <p class="text-lg font-black text-[#1e293b] dark:text-white">
-                    {{ isVendorOnline ? onlineLabel : offlineLabel }}
+                  <p class="text-lg font-black text-[#1e293b] dark:text-white" dir="ltr">
+                    {{ vendorPhoneDisplay }}
                   </p>
                 </div>
               </div>
@@ -658,6 +657,7 @@ const productInquiriesCount = computed(() => Number(productMetrics.value?.inquir
 const vendorName = computed(() => localizeField(product.value?.vendor, 'company_name', product.value?.company_name || 'Vendor'));
 const vendorLogo = computed(() => resolveAssetUrl(product.value?.vendor?.logo || ''));
 const vendorInitial = computed(() => vendorName.value?.charAt(0)?.toUpperCase() || 'V');
+const vendorPhoneDisplay = computed(() => product.value?.vendor?.phone || fallbackDash.value);
 const canonicalProductPath = computed(() => (
   product.value ? buildProductPath(product.value) : `/products/${route.params.id}`
 ));
@@ -771,7 +771,7 @@ const inquiryReadyLabel = computed(() => (locale.value === 'ar' ? 'جاهز لل
 const verifiedLabel = computed(() => (locale.value === 'ar' ? 'موثّق' : 'Verified'));
 const priceLabel = computed(() => (locale.value === 'ar' ? 'السعر' : 'Pricing'));
 const moqLabel = computed(() => (locale.value === 'ar' ? 'الحد الأدنى' : 'MOQ'));
-const availabilityLabel = computed(() => (locale.value === 'ar' ? 'حالة المورد' : 'Supplier status'));
+const supplierPhoneLabel = computed(() => (locale.value === 'ar' ? 'رقم المورد' : 'Supplier phone'));
 const onlineLabel = computed(() => (locale.value === 'ar' ? 'متصل الآن' : 'Online now'));
 const offlineLabel = computed(() => (locale.value === 'ar' ? 'غير متصل' : 'Offline'));
 const primaryContactLabel = computed(() => {
@@ -800,7 +800,6 @@ const memberSinceLabel = computed(() => {
 const responseRateLabel = computed(() => (locale.value === 'ar' ? 'معدل الرد' : 'Response rate'));
 const viewsLabel = computed(() => (locale.value === 'ar' ? 'المشاهدات' : 'Views'));
 const inquiriesLabel = computed(() => (locale.value === 'ar' ? 'الاستفسارات' : 'Inquiries'));
-const liveStatusLabel = computed(() => (locale.value === 'ar' ? 'التواجد' : 'Live status'));
 const viewStoreLabel = computed(() => (locale.value === 'ar' ? 'عرض متجر المورد' : 'View Store'));
 const premiumDetailsLabel = computed(() => (locale.value === 'ar' ? 'عرض احترافي' : 'Premium details'));
 const descriptionLabel = computed(() => (locale.value === 'ar' ? 'وصف المنتج' : 'Product description'));
@@ -865,6 +864,7 @@ useSeo(() => ({
       description: productShortDescription.value || productDescription.value || '',
       image: activeImageUrl.value ? [activeImageUrl.value] : [],
       sku: String(product.value?.id || route.params.id),
+      mpn: product.value?.model_number || undefined,
       brand: {
         '@type': 'Brand',
         name: vendorName.value

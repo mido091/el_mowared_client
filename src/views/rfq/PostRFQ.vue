@@ -1,5 +1,5 @@
 <template>
-  <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6" :dir="locale === 'ar' ? 'rtl' : 'ltr'">
+  <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6" :dir="locale === 'ar' ? 'rtl' : 'ltr'">
     <div class="mb-8 flex items-center gap-4">
       <router-link
         to="/rfq"
@@ -14,85 +14,74 @@
       </div>
     </div>
 
-    <div class="relative mb-8 flex justify-between gap-4 rounded-2xl border border-border bg-white p-4 shadow-sm dark:bg-card">
-      <div class="absolute left-8 right-8 top-1/2 -z-0 h-1 -translate-y-1/2 rounded bg-slate-100 dark:bg-slate-800">
-        <div class="h-full rounded bg-primary transition-all duration-300" :style="{ width: `${((step - 1) / 2) * 100}%` }" />
-      </div>
-
-      <div v-for="(item, index) in steps" :key="item.key" class="relative z-10 flex flex-col items-center gap-2">
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold shadow-sm transition-all"
-          :class="step > index + 1
-            ? 'bg-primary text-primary-foreground'
-            : step === index + 1
-              ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
-              : 'border-2 border-slate-200 bg-white text-muted-foreground dark:border-slate-800 dark:bg-slate-900'"
-        >
-          <CheckIcon v-if="step > index + 1" class="h-5 w-5" />
-          <span v-else>{{ index + 1 }}</span>
+    <div class="mb-8 rounded-[2rem] border border-border bg-white p-5 shadow-sm dark:bg-card">
+      <div class="relative">
+        <div class="absolute left-[16.666%] right-[16.666%] top-6 h-1 rounded-full bg-slate-100 dark:bg-slate-800">
+          <div
+            class="h-full rounded-full bg-primary transition-all duration-300"
+            :style="{ width: `${((step - 1) / Math.max(steps.length - 1, 1)) * 100}%` }"
+          />
         </div>
-        <span class="text-xs font-bold" :class="step >= index + 1 ? 'text-foreground' : 'text-muted-foreground'">
-          {{ item.label }}
-        </span>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div v-for="(item, index) in steps" :key="item.key" class="flex flex-col items-center gap-3 text-center">
+            <div
+              class="relative z-10 flex h-12 w-12 items-center justify-center rounded-full text-sm font-black shadow-sm transition-all"
+              :class="step > index + 1
+                ? 'bg-primary text-primary-foreground'
+                : step === index + 1
+                  ? 'bg-primary text-primary-foreground ring-4 ring-primary/15'
+                  : 'border-2 border-slate-200 bg-white text-muted-foreground dark:border-slate-700 dark:bg-slate-900'"
+            >
+              <CheckIcon v-if="step > index + 1" class="h-5 w-5" />
+              <span v-else>{{ index + 1 }}</span>
+            </div>
+            <div>
+              <p class="text-sm font-black" :class="step >= index + 1 ? 'text-foreground' : 'text-muted-foreground'">
+                {{ item.label }}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="rounded-2xl border border-border bg-white p-6 shadow-sm dark:bg-card md:p-10">
+    <div class="rounded-[2rem] border border-border bg-white p-6 shadow-sm dark:bg-card md:p-8">
       <form @submit.prevent="submitForm">
         <div v-show="step === 1" class="space-y-6">
-          <h2 class="mb-4 border-b border-border pb-2 text-xl font-bold">{{ labels.coreSectionTitle }}</h2>
+          <h2 class="border-b border-border pb-3 text-xl font-black">{{ labels.coreSectionTitle }}</h2>
 
-          <div class="form-group">
-            <label class="form-label font-bold">{{ labels.titleLabel }} <span class="text-destructive">*</span></label>
-            <input v-model.trim="form.title" type="text" :placeholder="labels.titlePlaceholder" class="form-input py-3 text-lg" required @input="clearField('title')" />
-            <p v-if="fieldMessage('title')" class="form-error mt-2">{{ fieldMessage('title') }}</p>
-          </div>
-
-          <div class="grid gap-6 md:grid-cols-2">
-            <div class="form-group">
-              <label class="form-label font-bold">{{ labels.categoryLabel }} <span class="text-destructive">*</span></label>
-              <div ref="categoryMenuRef" class="relative">
-                <button
-                  type="button"
-                  class="form-input flex min-h-[56px] w-full items-center justify-between rounded-2xl border-2 border-primary/20 bg-primary/5 pe-4 ps-4 text-start font-bold shadow-sm transition-colors hover:border-primary/35 focus:border-primary"
-                  @click="categoryMenuOpen = !categoryMenuOpen"
-                >
-                  <span :class="form.category_id ? 'text-foreground' : 'text-muted-foreground'">
-                    {{ selectedCategoryLabel }}
-                  </span>
-                  <ChevronDown class="h-5 w-5 shrink-0 text-primary transition-transform" :class="categoryMenuOpen ? 'rotate-180' : ''" />
-                </button>
-
-                <div
-                  v-if="categoryMenuOpen"
-                  class="absolute z-30 mt-2 w-full overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-2xl"
-                >
-                  <div class="mb-2 px-3 py-2 text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
-                    {{ labels.selectCategory }}
-                  </div>
-                  <button
-                    v-for="category in categories"
-                    :key="category.id"
-                    type="button"
-                    class="flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-bold transition-colors"
-                    :class="form.category_id === category.id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-foreground hover:bg-muted'"
-                    @click="selectCategory(category.id)"
-                  >
-                    <span>{{ locale === 'ar' ? category.name_ar : category.name_en }}</span>
-                    <CheckIcon v-if="form.category_id === category.id" class="h-4 w-4" />
-                  </button>
-                </div>
+          <div class="grid gap-6 xl:grid-cols-2">
+            <section class="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(45,191,178,0.08),rgba(255,255,255,0.98)_65%)] p-5 shadow-[0_18px_45px_-38px_rgba(15,23,42,0.38)]">
+              <div class="mb-4">
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-primary">{{ labels.categoryLabel }}</p>
+                <h3 class="mt-1 text-base font-black text-foreground">{{ labels.mainCategoryTitle }}</h3>
+                <p class="mt-1 text-xs leading-6 text-muted-foreground">{{ labels.categoryPanelHint }}</p>
               </div>
-              <p v-if="fieldMessage('category_id')" class="form-error mt-2">{{ fieldMessage('category_id') }}</p>
-              <p class="mt-2 text-xs font-medium text-muted-foreground">{{ labels.categoryHint }}</p>
-            </div>
 
-            <div class="form-group">
-              <label class="form-label font-bold">{{ labels.priorityLabel }}</label>
+              <ResponsiveSelect
+                v-model="selectedCategoryId"
+                :options="rootCategoryOptions"
+                :placeholder="labels.selectCategory"
+                :sheet-title="labels.categoryLabel"
+                :sheet-kicker="labels.mainCategoryTitle"
+                searchable
+              />
+
+              <p v-if="fieldMessage('category_id')" class="form-error mt-2">{{ fieldMessage('category_id') }}</p>
+            </section>
+
+            <section class="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_18px_45px_-38px_rgba(15,23,42,0.3)]">
+              <div class="mb-4">
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{{ labels.priorityLabel }}</p>
+                <h3 class="mt-1 text-base font-black text-foreground">{{ labels.priorityPanelTitle }}</h3>
+                <p class="mt-1 text-xs leading-6 text-muted-foreground">{{ labels.priorityPanelHint }}</p>
+              </div>
+
               <div ref="priorityMenuRef" class="relative">
                 <button
                   type="button"
-                  class="form-input flex min-h-[56px] w-full items-center justify-between rounded-2xl bg-slate-50 pe-4 ps-4 text-start font-bold shadow-sm dark:bg-slate-900"
+                  class="form-input flex min-h-[56px] w-full items-center justify-between rounded-2xl border border-slate-200 bg-white pe-4 ps-4 text-start font-bold shadow-sm transition-colors hover:border-primary/30 dark:bg-slate-900"
                   @click="priorityMenuOpen = !priorityMenuOpen"
                 >
                   <span>{{ selectedPriorityLabel }}</span>
@@ -116,8 +105,10 @@
                   </button>
                 </div>
               </div>
-            </div>
+            </section>
           </div>
+
+          <p class="text-sm text-muted-foreground">{{ labels.categoryHint }}</p>
 
           <div class="grid gap-6 md:grid-cols-2">
             <div class="form-group">
@@ -129,8 +120,16 @@
             <div class="form-group">
               <label class="form-label font-bold">{{ labels.targetPriceLabel }} <span class="font-normal text-muted-foreground">({{ labels.optional }})</span></label>
               <div class="relative">
-                <span class="absolute top-1/2 left-3 -translate-y-1/2 font-bold text-muted-foreground">EGP</span>
-                <input v-model.number="form.target_price" type="number" step="0.01" min="0" class="form-input ps-14" :placeholder="labels.targetPricePlaceholder" @input="clearField('target_price')" />
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">EGP</span>
+                <input
+                  v-model.number="form.target_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="form-input ps-14"
+                  :placeholder="labels.targetPricePlaceholder"
+                  @input="clearField('target_price')"
+                />
               </div>
               <p v-if="fieldMessage('target_price')" class="form-error mt-2">{{ fieldMessage('target_price') }}</p>
             </div>
@@ -138,12 +137,69 @@
         </div>
 
         <div v-show="step === 2" class="space-y-6">
-          <h2 class="mb-4 border-b border-border pb-2 text-xl font-bold">{{ labels.detailsSectionTitle }}</h2>
+          <div class="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-xl font-black">{{ labels.productsSectionTitle }}</h2>
+              <p class="mt-1 text-sm text-muted-foreground">{{ labels.productsSectionHint }}</p>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label font-bold">{{ labels.descriptionLabel }} <span class="text-destructive">*</span></label>
-            <textarea v-model.trim="form.description" rows="5" class="form-input resize-none" :placeholder="labels.descriptionPlaceholder" required @input="clearField('description')" />
-            <p v-if="fieldMessage('description')" class="form-error mt-2">{{ fieldMessage('description') }}</p>
+            <button type="button" class="btn-outline font-bold" @click="addItem">
+              <PlusIcon class="h-4 w-4" />
+              {{ labels.addItem }}
+            </button>
+          </div>
+
+          <div v-if="fieldMessage('items')" class="rounded-2xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {{ fieldMessage('items') }}
+          </div>
+
+          <div class="space-y-4">
+            <article
+              v-for="(item, index) in form.items"
+              :key="item.id"
+              class="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(135deg,rgba(45,191,178,0.06),rgba(255,255,255,0.98)_70%)] p-5 shadow-[0_18px_45px_-38px_rgba(15,23,42,0.28)]"
+            >
+              <div class="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-[11px] font-black uppercase tracking-[0.18em] text-primary">{{ labels.itemKicker }}</p>
+                  <h3 class="mt-1 text-lg font-black text-foreground">{{ labels.itemTitle(index + 1) }}</h3>
+                </div>
+
+                <button
+                  v-if="form.items.length > 1"
+                  type="button"
+                  class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100"
+                  :aria-label="labels.removeItem"
+                  @click="removeItem(index)"
+                >
+                  <Trash2Icon class="h-4 w-4" />
+                </button>
+              </div>
+
+              <div class="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+                <div class="form-group">
+                  <label class="form-label font-bold">{{ labels.itemLabel }} <span class="text-destructive">*</span></label>
+                  <input
+                    v-model.trim="item.label"
+                    type="text"
+                    class="form-input"
+                    :placeholder="labels.itemLabelPlaceholder"
+                    @input="clearField('items')"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label font-bold">{{ labels.itemDetailsLabel }} <span class="text-destructive">*</span></label>
+                  <textarea
+                    v-model.trim="item.details"
+                    rows="4"
+                    class="form-input resize-none"
+                    :placeholder="labels.itemDetailsPlaceholder"
+                    @input="clearField('items')"
+                  />
+                </div>
+              </div>
+            </article>
           </div>
 
           <div class="form-group">
@@ -161,10 +217,10 @@
                 <button
                   type="button"
                   class="absolute end-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg transition hover:bg-black/85"
-                  aria-label="Remove image"
+                  :aria-label="labels.removeImage"
                   @click="removeImage"
                 >
-                  <span class="text-lg font-black leading-none">×</span>
+                  <span class="text-lg font-black leading-none">x</span>
                 </button>
                 <img :src="imagePreview" :alt="labels.previewAlt" class="h-56 w-full object-cover" />
               </div>
@@ -173,7 +229,7 @@
         </div>
 
         <div v-show="step === 3" class="space-y-6">
-          <h2 class="mb-4 border-b border-border pb-2 text-xl font-bold">{{ labels.settingsSectionTitle }}</h2>
+          <h2 class="border-b border-border pb-3 text-xl font-black">{{ labels.settingsSectionTitle }}</h2>
 
           <div class="grid gap-6 md:grid-cols-2">
             <div class="form-group">
@@ -196,12 +252,12 @@
         </div>
 
         <div class="mt-10 flex items-center justify-between border-t border-border pt-6">
-          <button v-if="step > 1" type="button" @click="step -= 1" class="btn-outline px-8 font-bold">
+          <button v-if="step > 1" type="button" class="btn-outline px-8 font-bold" @click="step -= 1">
             {{ labels.back }}
           </button>
           <div v-else />
 
-          <button v-if="step < 3" type="button" @click="nextStep" class="btn-primary px-8 font-bold">
+          <button v-if="step < steps.length" type="button" class="btn-primary px-8 font-bold" @click="nextStep">
             {{ labels.next }}
           </button>
 
@@ -222,15 +278,17 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { ChevronDown, ChevronLeft, CheckIcon, Loader2Icon, UploadCloud } from 'lucide-vue-next';
+import { ChevronDown, ChevronLeft, CheckIcon, Loader2Icon, PlusIcon, Trash2Icon, UploadCloud } from 'lucide-vue-next';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useRfqStore } from '@/stores/rfqStore';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { clearFieldError, getFieldErrorMessage } from '@/utils/errorHandler';
 import { resolveLocalizedText } from '@/utils/localizedText';
+import { useCategoryHierarchy } from '@/composables/useCategoryHierarchy';
+import ResponsiveSelect from '@/components/ui/ResponsiveSelect.vue';
 
 const router = useRouter();
 const { locale } = useI18n();
@@ -242,20 +300,25 @@ const step = ref(1);
 const submitting = ref(false);
 const imageFile = ref(null);
 const imagePreview = ref('');
-const categoryMenuOpen = ref(false);
 const priorityMenuOpen = ref(false);
-const categoryMenuRef = ref(null);
 const priorityMenuRef = ref(null);
+const selectedCategoryId = ref('');
+const itemSeed = ref(1);
 
 const minDate = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
+const createItem = () => ({
+  id: itemSeed.value++,
+  label: '',
+  details: ''
+});
+
 const form = reactive({
-  title: '',
   category_id: null,
   quantity: 1,
   target_price: null,
   lead_priority: 'MEDIUM',
-  description: '',
+  items: [createItem()],
   max_responders: 5,
   expiration_date: minDate
 });
@@ -265,36 +328,46 @@ const localized = (ar, en) => (locale.value === 'ar' ? ar : en);
 const labels = computed(() => ({
   pageTitle: localized('إنشاء طلب عرض سعر جديد', 'Create New RFQ'),
   pageSubtitle: localized('أرسل متطلباتك ليصل الطلب إلى الموردين المناسبين بعد مراجعة الإدارة.', 'Submit your requirements so the right suppliers receive them after admin review.'),
-  coreSectionTitle: localized('المتطلبات الأساسية', 'Core Requirements'),
-  detailsSectionTitle: localized('التفاصيل والمرفقات', 'Details & Attachments'),
-  settingsSectionTitle: localized('إعدادات الطلب', 'RFQ Settings'),
-  titleLabel: localized('ماذا تحتاج؟', 'What do you need?'),
-  titlePlaceholder: localized('مثال: 50 متر سلك', 'e.g. 50 meters of cable'),
+  coreSectionTitle: localized('الأساسيات', 'Core Requirements'),
+  productsSectionTitle: localized('المنتجات المطلوبة', 'Requested Products'),
+  productsSectionHint: localized('أضف منتجًا واحدًا أو عدة منتجات داخل نفس الطلب مع وصف واضح لكل بند.', 'Add one or multiple products in the same RFQ with clear details for each item.'),
+  settingsSectionTitle: localized('الإعدادات', 'RFQ Settings'),
   categoryLabel: localized('الفئة', 'Category'),
-  selectCategory: localized('اختر الفئة', 'Select category'),
-  categoryHint: localized('سيتم توجيه الطلب تلقائيًا إلى الموردين المطابقين لهذه الفئة بعد المراجعة.', 'This RFQ will be routed automatically to matching suppliers after review.'),
+  mainCategoryTitle: localized('القسم الرئيسي', 'Main category'),
+  selectCategory: localized('اختر القسم الرئيسي', 'Select main category'),
+  categoryPanelHint: localized('طلبات RFQ تعتمد على الأقسام الرئيسية فقط لتسهيل توجيه الطلب للموردين المناسبين.', 'RFQs use main categories only to route requests more clearly.'),
+  categoryHint: localized('سيتم توجيه الطلب تلقائيًا إلى الموردين المطابقين لهذا القسم بعد المراجعة.', 'This RFQ will be routed automatically to matching suppliers after review.'),
   priorityLabel: localized('الأولوية', 'Priority'),
+  priorityPanelTitle: localized('أولوية الطلب', 'Request priority'),
+  priorityPanelHint: localized('حدد أولوية واضحة حتى يفهم المورد سرعة الاحتياج.', 'Choose the urgency level that best matches your request.'),
   priorityLow: localized('منخفضة', 'Low'),
   priorityMedium: localized('متوسطة', 'Medium'),
   priorityHigh: localized('مرتفعة', 'High'),
   quantityLabel: localized('الكمية المطلوبة', 'Required Quantity'),
   targetPriceLabel: localized('السعر المستهدف', 'Target Price'),
   targetPricePlaceholder: localized('مثال: 5000', 'e.g. 5000'),
-  descriptionLabel: localized('الوصف التفصيلي', 'Detailed Description'),
-  descriptionPlaceholder: localized('اشرح المواصفات والمواد والكمية وأي اشتراطات مهمة...', 'Describe specs, materials, quantity, and any important constraints...'),
+  itemKicker: localized('بند RFQ', 'RFQ Item'),
+  itemTitle: (count) => localized(`المنتج ${count}`, `Item ${count}`),
+  itemLabel: localized('ماذا تحتاج', 'What do you need'),
+  itemLabelPlaceholder: localized('مثال: كاميرا خارجية 4MP', 'e.g. Outdoor CCTV camera 4MP'),
+  itemDetailsLabel: localized('تفاصيل المنتج', 'Product details'),
+  itemDetailsPlaceholder: localized('اكتب المواصفات، الكميات الفرعية، المواد، المقاسات، أو أي اشتراطات مهمة لهذا البند...', 'Describe specifications, sub-quantities, materials, dimensions, or any important constraints for this item...'),
+  addItem: localized('إضافة منتج', 'Add Item'),
+  removeItem: localized('حذف البند', 'Remove item'),
   imageLabel: localized('صورة مرجعية', 'Reference Image'),
   optional: localized('اختياري', 'Optional'),
   uploadTitle: localized('ارفع صورة من جهازك', 'Upload an image from your device'),
   uploadHint: localized('الصيغ المدعومة: JPG, PNG, WEBP بحد أقصى 5MB', 'Supported formats: JPG, PNG, WEBP up to 5MB'),
   previewAlt: localized('معاينة الصورة المرفوعة', 'Uploaded image preview'),
+  removeImage: localized('حذف الصورة', 'Remove image'),
   maxRespondersLabel: localized('أقصى عدد للردود', 'Maximum Responders'),
   maxRespondersHint: localized('يُستخدم لتحديد عدد الموردين الذين سيتنافسون على الطلب.', 'Used to limit how many suppliers can compete on this RFQ.'),
   expirationLabel: localized('تاريخ الانتهاء', 'Expiration Date'),
   back: localized('السابق', 'Back'),
   next: localized('التالي', 'Next'),
   submit: localized('إرسال الطلب', 'Submit RFQ'),
-  coreValidation: localized('يرجى استكمال الحقول الأساسية المطلوبة.', 'Please complete the required core fields.'),
-  descriptionValidation: localized('يرجى إضافة وصف واضح للطلب.', 'Please add a clear description.'),
+  coreValidation: localized('يرجى استكمال بيانات القسم والكمية أولًا.', 'Please complete category and quantity first.'),
+  itemsValidation: localized('أضف بندًا واحدًا على الأقل مع ماذا تحتاج وتفاصيل المنتج.', 'Please add at least one complete item with what you need and product details.'),
   submitSuccess: localized('تم إرسال طلب العرض بنجاح وهو الآن بانتظار مراجعة الإدارة.', 'RFQ submitted successfully and is now awaiting admin review.'),
   submitError: localized('تعذر إرسال الطلب حاليًا.', 'Failed to submit RFQ right now.')
 }));
@@ -306,39 +379,55 @@ const steps = computed(() => [
 ]);
 
 const categories = computed(() => categoryStore.categories);
+const { rootCategories } = useCategoryHierarchy(categories, locale);
+
+const rootCategoryOptions = computed(() =>
+  rootCategories.value.map((category) => ({
+    value: category.id,
+    label: category.label,
+    description: category.slug ? `/${category.slug}` : '',
+  }))
+);
+
 const priorityOptions = computed(() => [
   { value: 'LOW', label: labels.value.priorityLow },
   { value: 'MEDIUM', label: labels.value.priorityMedium },
   { value: 'HIGH', label: labels.value.priorityHigh }
 ]);
 
-const selectedCategoryLabel = computed(() => {
-  const selected = categories.value.find((category) => category.id === form.category_id);
-  if (!selected) return labels.value.selectCategory;
-  return locale.value === 'ar' ? selected.name_ar : selected.name_en;
-});
-
-const selectedPriorityLabel = computed(() => {
-  return priorityOptions.value.find((option) => option.value === form.lead_priority)?.label || labels.value.priorityMedium;
-});
+const selectedPriorityLabel = computed(() =>
+  priorityOptions.value.find((option) => option.value === form.lead_priority)?.label || labels.value.priorityMedium
+);
 
 const fieldMessage = (field) => getFieldErrorMessage(rfqStore.fieldErrors, field, locale.value);
 const clearField = (field) => clearFieldError(rfqStore.fieldErrors, field);
 
 function handleImageChange(event) {
   const file = event.target.files?.[0] || null;
+  if (imagePreview.value) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
   imageFile.value = file;
   imagePreview.value = file ? URL.createObjectURL(file) : '';
 }
 
 function removeImage() {
+  if (imagePreview.value) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
   imageFile.value = null;
   imagePreview.value = '';
 }
 
-function selectCategory(categoryId) {
-  form.category_id = categoryId;
-  categoryMenuOpen.value = false;
+function addItem() {
+  form.items.push(createItem());
+  clearField('items');
+}
+
+function removeItem(index) {
+  if (form.items.length === 1) return;
+  form.items.splice(index, 1);
+  clearField('items');
 }
 
 function selectPriority(priority) {
@@ -347,22 +436,23 @@ function selectPriority(priority) {
 }
 
 function handleOutsideClick(event) {
-  if (categoryMenuRef.value && !categoryMenuRef.value.contains(event.target)) {
-    categoryMenuOpen.value = false;
-  }
   if (priorityMenuRef.value && !priorityMenuRef.value.contains(event.target)) {
     priorityMenuOpen.value = false;
   }
 }
 
+function hasValidItems() {
+  return form.items.every((item) => `${item.label}`.trim() && `${item.details}`.trim());
+}
+
 function nextStep() {
-  if (step.value === 1 && (!form.title || !form.category_id || !form.quantity)) {
+  if (step.value === 1 && (!form.category_id || !form.quantity)) {
     notificationStore.warn(labels.value.coreValidation);
     return;
   }
 
-  if (step.value === 2 && !form.description) {
-    notificationStore.warn(labels.value.descriptionValidation);
+  if (step.value === 2 && (!form.items.length || !hasValidItems())) {
+    notificationStore.warn(labels.value.itemsValidation);
     return;
   }
 
@@ -373,15 +463,20 @@ async function submitForm() {
   submitting.value = true;
   try {
     const payload = new FormData();
-    payload.append('title', form.title);
     payload.append('category_id', String(form.category_id));
     payload.append('quantity', String(form.quantity));
     payload.append('lead_priority', form.lead_priority);
-    payload.append('description', form.description);
+    payload.append('items', JSON.stringify(
+      form.items.map((item, index) => ({
+        label: `${item.label}`.trim(),
+        details: `${item.details}`.trim(),
+        order: index + 1
+      }))
+    ));
     payload.append('max_responders', String(form.max_responders));
     payload.append('expiration_time', `${form.expiration_date} 23:59:00`);
 
-    if (form.target_price) {
+    if (form.target_price != null && form.target_price !== '') {
       payload.append('target_price', String(form.target_price));
     }
 
@@ -402,6 +497,18 @@ async function submitForm() {
   }
 }
 
+watch(selectedCategoryId, (nextValue) => {
+  form.category_id = nextValue ? Number(nextValue) : null;
+});
+
+watch(
+  () => form.category_id,
+  (categoryId) => {
+    selectedCategoryId.value = categoryId ? String(categoryId) : '';
+  },
+  { immediate: true }
+);
+
 onMounted(async () => {
   document.addEventListener('click', handleOutsideClick, true);
   await categoryStore.fetchCategories({ mode: 'revalidate' });
@@ -409,5 +516,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleOutsideClick, true);
+  if (imagePreview.value) {
+    URL.revokeObjectURL(imagePreview.value);
+  }
 });
 </script>

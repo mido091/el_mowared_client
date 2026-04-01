@@ -85,6 +85,13 @@
                   <h3 class="line-clamp-2 text-sm font-bold text-secondary dark:text-slate-100">
                     {{ productDisplayName(product) }}
                   </h3>
+                  <p
+                    v-if="product.model_number"
+                    class="text-[11px] font-bold tracking-[0.08em] text-primary"
+                    dir="ltr"
+                  >
+                    {{ locale === 'ar' ? 'موديل:' : 'Model:' }} {{ product.model_number }}
+                  </p>
                   <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
                     {{ getCategoryName(product.category_id) }}
                   </p>
@@ -242,6 +249,13 @@
                     <div class="space-y-1">
                       <p class="line-clamp-1 text-sm font-bold tracking-tight text-secondary transition group-hover:text-primary dark:text-slate-100">
                         {{ productDisplayName(product) }}
+                      </p>
+                      <p
+                        v-if="product.model_number"
+                        class="text-[11px] font-bold tracking-[0.08em] text-primary"
+                        dir="ltr"
+                      >
+                        {{ locale === 'ar' ? 'موديل:' : 'Model:' }} {{ product.model_number }}
                       </p>
                       <div class="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-400">
                         <span class="uppercase tracking-[0.16em]">{{ getCategoryName(product.category_id) }}</span>

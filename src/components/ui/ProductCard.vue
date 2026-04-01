@@ -36,12 +36,6 @@
         </button>
       </div>
 
-      <div v-if="discountPercent > 0" class="absolute end-2 top-2">
-        <span class="rounded-full bg-destructive px-2 py-0.5 text-[9px] font-black text-white shadow-sm">
-          -{{ discountPercent }}%
-        </span>
-      </div>
-
       <div class="absolute start-2 top-2">
         <span class="rounded-full border border-white/60 bg-white/90 px-2 py-1 text-[9px] font-bold text-slate-700 shadow-sm backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-200">
           {{ categoryLabel }}
@@ -61,6 +55,14 @@
         {{ productTitle }}
       </h3>
 
+      <p
+        v-if="props.product.model_number"
+        class="mb-2 truncate text-[10px] font-bold tracking-[0.08em] text-primary"
+        dir="ltr"
+      >
+        {{ locale === 'ar' ? 'موديل:' : 'Model:' }} {{ props.product.model_number }}
+      </p>
+
       <div class="border-t border-border/60 pt-2">
         <p class="mb-1 text-[10px] font-bold" :class="stockTone">
           {{ stockLabel }}
@@ -68,18 +70,7 @@
         <div class="flex items-end justify-between">
           <div class="min-w-0 flex-1">
             <p class="text-[13px] font-black leading-tight text-primary" dir="ltr">
-              <template v-if="product.discount_price">
-                {{ formatCurrency(product.discount_price) }}
-                <span class="ms-1 text-[10px] font-medium text-muted-foreground line-through">
-                  {{ formatCurrency(product.price_min || product.price) }}
-                </span>
-              </template>
-              <template v-else>
-                {{ formatCurrency(product.price_min || product.price) }}
-                <span v-if="product.price_max && product.price_max !== product.price_min" class="text-[10px] font-medium text-muted-foreground">
-                  - {{ formatCurrency(product.price_max) }}
-                </span>
-              </template>
+              {{ productPriceLabel }}
             </p>
             <p v-if="product.moq || product.min_order_quantity" class="mt-0.5 text-[9px] font-medium leading-4 text-muted-foreground">
               {{ t('products.moq_label', { n: product.moq || product.min_order_quantity, u: t('products.pieces') }) }}
@@ -159,11 +150,32 @@ const categoryLabel = computed(() => {
   return t(`categories.${props.product.category}`);
 });
 
-const discountPercent = computed(() => {
-  const base = Number(props.product.price_max || props.product.price || 0);
-  const discount = Number(props.product.price_min || props.product.discount_price || 0);
-  if (!base || !discount || discount >= base) return 0;
-  return Math.round((1 - discount / base) * 100);
+const priceBounds = computed(() => {
+  const values = [
+    props.product.price_min,
+    props.product.price,
+    props.product.discount_price,
+    props.product.price_max,
+  ]
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  if (!values.length) {
+    return { min: 0, max: 0 };
+  }
+
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+  };
+});
+
+const productPriceLabel = computed(() => {
+  const { min, max } = priceBounds.value;
+
+  if (!min && !max) return formatCurrency(0);
+  if (max > min) return `${formatCurrency(min)} ~ ${formatCurrency(max)}`;
+  return formatCurrency(min);
 });
 
 const availableQuantity = computed(() => Number(props.product.quantity_available ?? 0));

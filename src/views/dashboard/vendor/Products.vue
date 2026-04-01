@@ -277,6 +277,7 @@ const buildOptimisticProduct = (formData) => ({
   id: activeProduct.value?.id,
   name_ar: formData.name_ar,
   name_en: formData.name_en || formData.name_ar,
+  model_number: (formData.model_number || '').trim() || null,
   description_ar: formData.description_ar,
   description_en: formData.description_en || formData.description_ar,
   category_id: Number(formData.category_id),
@@ -313,6 +314,7 @@ const handleSave = async (formData) => {
 
     payload.append('name_ar', formData.name_ar);
     payload.append('name_en', formData.name_en || formData.name_ar);
+    payload.append('modelNumber', (formData.model_number || '').trim());
     payload.append('description_ar', formData.description_ar);
     payload.append('description_en', formData.description_en || formData.description_ar);
     payload.append('price', formData.price);

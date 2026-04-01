@@ -178,6 +178,7 @@ const piecesLabel = computed(() => localized('قطعة', 'pcs'));
 const coreFields = computed(() => [
   { key: 'category', label: localized('الفئة', 'Category') },
   { key: 'vendor', label: localized('المورد', 'Vendor') },
+  { key: 'model_number', label: localized('رقم الموديل', 'Model No.') },
   { key: 'price', label: localized('السعر', 'Price') },
   { key: 'moq', label: localized('أقل كمية طلب', 'MOQ') },
   { key: 'avg_rating', label: localized('التقييم', 'Rating') }
@@ -322,6 +323,7 @@ const getRatingValue = (product) => {
 const getCoreValue = (product, key) => {
   if (key === 'category') return getCategoryLabel(product) || emptyValue.value;
   if (key === 'vendor') return getVendorLabel(product) || emptyValue.value;
+  if (key === 'model_number') return product.model_number || emptyValue.value;
   if (key === 'price') return getPriceLabel(product);
   if (key === 'moq') return getMoqValue(product) || emptyValue.value;
   if (key === 'avg_rating') return getRatingValue(product);

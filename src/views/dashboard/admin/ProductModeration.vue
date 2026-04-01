@@ -130,14 +130,21 @@
               </div>
             </div>
 
-            <div class="space-y-4 p-4">
-              <div>
-                <h3 class="line-clamp-2 text-base font-black text-secondary dark:text-slate-100">
-                  {{ locale === 'ar' ? product.name_ar : (product.name_en || product.name_ar) }}
-                </h3>
-                <p class="mt-2 line-clamp-3 text-xs leading-6 text-muted-foreground">
-                  {{ locale === 'ar' ? (product.description_ar || product.description_en || '') : (product.description_en || product.description_ar || '') }}
-                </p>
+              <div class="space-y-4 p-4">
+                <div>
+                  <h3 class="line-clamp-2 text-base font-black text-secondary dark:text-slate-100">
+                    {{ locale === 'ar' ? product.name_ar : (product.name_en || product.name_ar) }}
+                  </h3>
+                  <p
+                    v-if="product.model_number"
+                    class="mt-2 text-xs font-bold tracking-[0.08em] text-primary"
+                    dir="ltr"
+                  >
+                    {{ locale === 'ar' ? 'موديل:' : 'Model:' }} {{ product.model_number }}
+                  </p>
+                  <p class="mt-2 line-clamp-3 text-xs leading-6 text-muted-foreground">
+                    {{ locale === 'ar' ? (product.description_ar || product.description_en || '') : (product.description_en || product.description_ar || '') }}
+                  </p>
               </div>
 
               <div class="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
@@ -269,6 +276,10 @@
                             ? `${formatCurrency(selectedDetail.price)} - ${formatCurrency(selectedDetail.price_max || selectedDetail.discount_price)}`
                             : formatCurrency(selectedDetail.price) }}
                         </strong>
+                      </div>
+                      <div v-if="selectedDetail.model_number" class="flex items-center justify-between gap-4">
+                        <span>{{ locale === 'ar' ? 'رقم الموديل' : 'Model No.' }}</span>
+                        <strong class="text-secondary dark:text-slate-100" dir="ltr">{{ selectedDetail.model_number }}</strong>
                       </div>
                       <div class="flex items-center justify-between gap-4">
                         <span>{{ locale === 'ar' ? 'الحد الأدنى للطلب' : 'MOQ' }}</span>

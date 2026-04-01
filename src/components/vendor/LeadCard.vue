@@ -32,9 +32,17 @@
       </div>
     </div>
 
-    <p class="text-sm text-foreground/80 line-clamp-2">
-      {{ rfq.description || 'No description provided.' }}
-    </p>
+    <div class="space-y-2">
+      <div
+        v-for="item in previewItems"
+        :key="`${item.order}-${item.label}`"
+        class="rounded-xl border border-border/60 bg-muted/20 p-3"
+      >
+        <p class="text-[10px] font-black uppercase tracking-[0.16em] text-primary">What do you need</p>
+        <p class="mt-1 text-sm font-bold text-foreground">{{ item.label }}</p>
+        <p class="mt-2 line-clamp-2 text-sm text-foreground/80">{{ item.details }}</p>
+      </div>
+    </div>
 
     <!-- Metrics Grid -->
     <div class="grid grid-cols-2 gap-3 mt-auto pt-4 border-t dark:border-border">
@@ -96,6 +104,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { ClockIcon, UsersIcon, Loader2Icon } from 'lucide-vue-next';
 import { formatEGPCurrency } from '@/utils/currency';
+import { normalizeRfqItems } from '@/utils/rfqItems';
 
 const props = defineProps({
   rfq: {
@@ -111,6 +120,7 @@ const props = defineProps({
 defineEmits(['offer', 'decline']);
 
 const formatCurrency = (val) => (val ? formatEGPCurrency(val, 'en') : null);
+const previewItems = computed(() => normalizeRfqItems(props.rfq).slice(0, 2));
 
 // Reactivity for Countdown Timer
 const now = ref(new Date());

@@ -121,6 +121,32 @@
                     </div>
                   </div>
 
+                  <div class="space-y-4 group/field">
+                    <label class="flex items-center justify-between px-1">
+                      <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-focus-within/field:text-primary transition-colors">
+                        {{ locale === 'ar' ? 'رقم الموديل' : 'Model No.' }}
+                        <span class="text-slate-300 font-normal ml-1">({{ locale === 'ar' ? 'اختياري' : 'Optional' }})</span>
+                      </span>
+                      <span class="text-[8px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200">
+                        {{ locale === 'ar' ? 'LTR' : 'SKU' }}
+                      </span>
+                    </label>
+                    <input
+                      v-model="form.model_number"
+                      dir="ltr"
+                      inputmode="text"
+                      @input="handleFieldInput('model_number', 'modelNumber')"
+                      :placeholder="locale === 'ar' ? 'مثال: AX-9000 / MDL-220' : 'Example: AX-9000 / MDL-220'"
+                      class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-bold text-secondary placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none"
+                    />
+                    <p class="text-[10px] font-medium text-slate-400 px-1">
+                      {{ locale === 'ar' ? 'يساعد المشترين على العثور على المنتج والبحث عنه بدقة أكبر.' : 'Helps buyers discover and search for the exact product faster.' }}
+                    </p>
+                    <p v-if="fieldMessage('model_number', 'modelNumber')" class="text-[10px] text-rose-500 font-black mt-2 px-1">
+                      {{ fieldMessage('model_number', 'modelNumber') }}
+                    </p>
+                  </div>
+
                   <div class="space-y-4">
                     <label class="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 transition-colors">
                       {{ t('auth.category') }} <span class="text-primary">*</span>
@@ -129,13 +155,16 @@
                       <CategorySelect 
                         v-model="selectedRootCategory" 
                         :categories="rootCategories"
+                        :label="locale === 'ar' ? 'القسم الرئيسي' : 'Main Category'"
+                        :placeholder="locale === 'ar' ? 'اختر القسم الرئيسي...' : 'Select Main Category...'"
                       />
                       <Transition name="fade">
                         <CategorySelect 
                           v-if="subCategories.length > 0"
                           v-model="form.category_id" 
                           :categories="subCategories"
-                          :placeholder="locale === 'ar' ? 'اختر الفئة التابعة...' : 'Select Subcategory...'"
+                          :label="locale === 'ar' ? 'القسم الفرعي' : 'Subcategory'"
+                          :placeholder="locale === 'ar' ? 'اختر القسم الفرعي...' : 'Select Subcategory...'"
                         />
                       </Transition>
                     </div>
@@ -496,6 +525,7 @@ const wizardTabs = [
 const form = reactive({
   name_ar: '',
   name_en: '',
+  model_number: '',
   category_id: '',
   description_ar: '',
   description_en: '',
@@ -584,6 +614,7 @@ const resetForm = () => {
   Object.assign(form, {
     name_ar: '',
     name_en: '',
+    model_number: '',
     category_id: props.categories[0]?.id || '',
     description_ar: '',
     description_en: '',
@@ -653,6 +684,7 @@ watch(() => props.modelValue, (isOpen) => {
       Object.assign(form, {
         name_ar: newVal.name_ar || '',
         name_en: newVal.name_en || '',
+        model_number: newVal.model_number || '',
         category_id: newVal.category_id || '',
         description_ar: newVal.description_ar || '',
         description_en: newVal.description_en || '',

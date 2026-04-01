@@ -127,20 +127,33 @@
         <div v-if="categoriesLoading" class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
           <div v-for="i in 7" :key="`category-skeleton-${i}`" class="skeleton h-40 rounded-2xl" />
         </div>
-        <div v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
+        <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
           <router-link
-            v-for="cat in categories"
+            v-for="cat in rootCategories"
             :key="cat.id"
             :to="`/products?category=${cat.id}`"
-            class="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/50 hover:shadow-premium-hover"
+            class="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/50 hover:shadow-premium-hover"
           >
             <div class="absolute inset-0 bg-gradient-to-b from-teal-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-500/5 text-teal-600 ring-8 ring-teal-500/5 transition-all duration-300 group-hover:bg-teal-500 group-hover:text-white dark:text-teal-400 dark:group-hover:text-white">
-              <component :is="getIcon(cat.icon)" class="h-7 w-7" />
+            <div class="relative z-10 flex items-start gap-4">
+              <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-teal-500/5 text-teal-600 ring-8 ring-teal-500/5 transition-all duration-300 group-hover:bg-teal-500 group-hover:text-white dark:text-teal-400 dark:group-hover:text-white">
+                <component :is="getIcon(cat.icon)" class="h-7 w-7" />
+              </div>
+              <div class="min-w-0 flex-1 text-start">
+                <span class="block text-sm font-bold text-foreground transition-colors group-hover:text-teal-600 dark:group-hover:text-teal-400">
+                  {{ cat.label }}
+                </span>
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                  <span
+                    v-for="child in getChildren(cat.id).slice(0, 3)"
+                    :key="child.id"
+                    class="rounded-full bg-teal-500/5 px-2 py-1 text-[10px] font-bold text-muted-foreground"
+                  >
+                    {{ child.label }}
+                  </span>
+                </div>
+              </div>
             </div>
-            <span class="block text-sm font-bold text-foreground transition-colors group-hover:text-teal-600 dark:group-hover:text-teal-400">
-              {{ cat.name }}
-            </span>
           </router-link>
         </div>
       </section>
@@ -226,6 +239,7 @@ import { useCategoryStore } from '@/stores/categoryStore';
 import { useSettingsStore } from '@/stores/settings';
 import AppImage from '@/components/ui/AppImage.vue';
 import { useSeo } from '@/composables/useSeo';
+import { useCategoryHierarchy } from '@/composables/useCategoryHierarchy';
 import { whenBrowserIdle } from '@/utils/scheduling';
 import heroImage from '@/assets/images/hero_b2b.png';
 
@@ -327,12 +341,12 @@ const stats = computed(() => [
 ]);
 
 const popularSearches = computed(() => {
-  const categoryTerms = categories.value
+  const categoryTerms = rootCategories.value
     .filter((category) => category?.id && category?.name)
     .slice(0, 4)
     .map((category) => ({
       key: `category-${category.id}`,
-      label: category.name,
+      label: category.label,
       type: 'category',
       categoryId: category.id
     }));
@@ -376,6 +390,7 @@ const getIcon = (name) => {
 };
 
 const categories = computed(() => categoryStore.localizedCategories(locale.value));
+const { rootCategories, getChildren } = useCategoryHierarchy(categories, locale);
 
 const loadFeaturedProducts = async () => {
   if (hasLoadedFeatured.value) return;

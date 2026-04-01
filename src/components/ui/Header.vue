@@ -112,8 +112,15 @@
             @focus="handleSearchFocus"
             @keydown.enter="doSearch"
             :placeholder="t('common.searchPlaceholder')"
-            class="form-input h-10 pe-4 ps-10 text-sm"
+            class="form-input h-10 pe-24 ps-10 text-sm"
           />
+          <button
+            type="button"
+            @click="doSearch"
+            class="absolute end-1.5 top-1/2 inline-flex h-7 -translate-y-1/2 items-center justify-center rounded-lg bg-[hsl(var(--primary))] px-3 text-xs font-black text-white shadow-[0_10px_24px_-16px_hsl(var(--primary))] transition hover:opacity-95"
+          >
+            {{ locale === 'ar' ? 'ابحث' : 'Search' }}
+          </button>
 
           <transition name="search-pop">
             <div
@@ -140,6 +147,13 @@
                     <div class="min-w-0 flex-1">
                       <p class="truncate text-sm font-black text-foreground">{{ getProductName(product) }}</p>
                       <p class="mt-1 truncate text-xs text-muted-foreground">{{ labels.productResult }}</p>
+                      <p
+                        v-if="product.model_number"
+                        class="mt-1 truncate text-[11px] font-bold text-primary"
+                        dir="ltr"
+                      >
+                        {{ locale === 'ar' ? 'موديل:' : 'Model:' }} {{ product.model_number }}
+                      </p>
                     </div>
                   </button>
                 </section>
@@ -416,8 +430,16 @@
             @focus="handleSearchFocus"
             @keydown.enter="doSearch"
             :placeholder="t('common.searchPlaceholder')"
-            class="form-input h-11 ps-9 text-sm"
+            class="form-input h-11 pe-14 ps-9 text-sm"
           />
+          <button
+            type="button"
+            @click="doSearch"
+            class="absolute end-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-[hsl(var(--primary))] text-white shadow-[0_10px_24px_-16px_hsl(var(--primary))] transition hover:opacity-95"
+            :aria-label="locale === 'ar' ? 'ابحث' : 'Search'"
+          >
+            <Search class="h-4 w-4" />
+          </button>
 
           <transition name="search-pop">
             <div
@@ -455,6 +477,13 @@
                   <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-black text-foreground">{{ item.type === 'product' ? getProductName(item) : getVendorName(item) }}</p>
                     <p class="mt-1 text-xs text-muted-foreground">{{ item.type === 'product' ? labels.productResult : labels.vendorResult }}</p>
+                    <p
+                      v-if="item.type === 'product' && item.model_number"
+                      class="mt-1 truncate text-[11px] font-bold text-primary"
+                      dir="ltr"
+                    >
+                      {{ locale === 'ar' ? 'موديل:' : 'Model:' }} {{ item.model_number }}
+                    </p>
                   </div>
                 </button>
               </div>
@@ -515,8 +544,7 @@ const searchOpen = ref(false);
 let searchTimer = null;
 
 const navLinks = computed(() => [
-  { to: '/products', label: t('nav.products') },
-  { to: '/products?filter=discounted', label: t('nav.current_offers') }
+  { to: '/products', label: t('nav.products') }
 ]);
 
 const labels = computed(() => ({
@@ -646,11 +674,10 @@ const closeSearchSuggestions = () => {
 };
 
 const doSearch = () => {
-  if (searchQuery.value.trim()) {
-    router.push({ path: '/products', query: { q: searchQuery.value.trim() } });
-    mobileMenuOpen.value = false;
-    closeSearchSuggestions();
-  }
+  const query = searchQuery.value.trim();
+  router.push(query ? { path: '/products', query: { q: query } } : { path: '/products' });
+  mobileMenuOpen.value = false;
+  closeSearchSuggestions();
 };
 
 const logout = () => {

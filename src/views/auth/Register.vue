@@ -107,6 +107,7 @@
           v-model="vendorForm.categoryIds"
           :label="t('auth.category')"
           :error="vendorFieldMessage('categoryIds')"
+          root-only
           class="col-span-2"
         />
       </div>

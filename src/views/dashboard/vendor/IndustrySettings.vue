@@ -155,6 +155,7 @@ import CategoryMultiSelect from '@/components/ui/CategoryMultiSelect.vue';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useUiStore } from '@/stores/ui';
 import { normalizeError } from '@/utils/errorHandler';
+import { useCategoryHierarchy } from '@/composables/useCategoryHierarchy';
 
 const { locale } = useI18n();
 const uiStore = useUiStore();
@@ -218,10 +219,10 @@ const labels = computed(() => ({
 }));
 
 const allCategories = computed(() => categoryStore.localizedCategories(locale.value));
+const { getCategoryPathLabel } = useCategoryHierarchy(allCategories, locale);
 
 const getCategoryName = (id) => {
-  const category = allCategories.value.find((item) => Number(item.id) === Number(id));
-  return category?.name || `#${id}`;
+  return getCategoryPathLabel(id) || `#${id}`;
 };
 
 const selectedCategoryObjects = computed(() =>

@@ -22,7 +22,10 @@
           </div>
 
           <h1 class="text-3xl font-black text-foreground">{{ rfq.title }}</h1>
-          <p class="mt-3 text-sm leading-7 text-muted-foreground">{{ rfq.description || labels.noDescription }}</p>
+          <div class="mt-4">
+            <RfqItemsList :items="rfqItems" :item-label="labels.whatNeeded" :details-label="labels.productDetails" />
+            <p v-if="!rfqItems.length" class="mt-3 text-sm leading-7 text-muted-foreground">{{ labels.noDescription }}</p>
+          </div>
         </div>
       </div>
 
@@ -176,6 +179,8 @@ import { useNotificationStore } from '@/stores/notificationStore';
 import { useRfqStore } from '@/stores/rfqStore';
 import { clearFieldError, getFieldErrorMessage } from '@/utils/errorHandler';
 import { resolveLocalizedText } from '@/utils/localizedText';
+import { normalizeRfqItems } from '@/utils/rfqItems';
+import RfqItemsList from '@/components/rfq/RfqItemsList.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -201,6 +206,8 @@ const localized = (ar, en) => (locale.value === 'ar' ? ar : en);
 const labels = computed(() => ({
   back: localized('العودة إلى طلبات العروض', 'Back to RFQs'),
   noDescription: localized('لا يوجد وصف تفصيلي مضاف لهذا الطلب حتى الآن.', 'No detailed description has been added yet.'),
+  whatNeeded: localized('ماذا تحتاج', 'What do you need'),
+  productDetails: localized('تفاصيل المنتج', 'Product details'),
   quantity: localized('الكمية', 'Quantity'),
   budget: localized('الميزانية', 'Budget'),
   responders: localized('الاستجابات', 'Responders'),
@@ -237,6 +244,7 @@ const categoryName = computed(() => (locale.value === 'ar'
   : (rfq.value?.category_name_en || rfq.value?.category_name_ar || localized('غير مصنف', 'Uncategorized'))));
 const formattedBudget = computed(() => rfq.value?.target_price ? formatEGPCurrency(Number(rfq.value.target_price), locale.value) : localized('غير محددة', 'Not set'));
 const formattedDeadline = computed(() => rfq.value?.expiration_time ? new Date(rfq.value.expiration_time).toLocaleDateString(locale.value === 'ar' ? 'ar-EG' : 'en-US') : localized('غير محدد', 'Not set'));
+const rfqItems = computed(() => normalizeRfqItems(rfq.value));
 const canSubmitOffer = computed(() => isVendor.value && ['BROADCASTED', 'OPEN', 'NEGOTIATING'].includes(`${rfq.value?.status || ''}`.toUpperCase()));
 const canAcceptOffer = computed(() => isBuyer.value && ['OPEN', 'NEGOTIATING', 'OFFERED'].includes(`${rfq.value?.status || ''}`.toUpperCase()));
 const canVendorChatBuyer = computed(() => isVendor.value && !!vendorProfileId.value && !!rfq.value?.id);

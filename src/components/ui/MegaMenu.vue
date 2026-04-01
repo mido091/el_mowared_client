@@ -8,20 +8,39 @@
         <div v-for="i in 12" :key="i" class="h-24 bg-muted animate-pulse rounded-2xl"></div>
       </div>
       
-      <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         <router-link
-          v-for="cat in categoryStore.localizedCategories(locale)"
+          v-for="cat in rootCategories"
           :key="cat.id"
           :to="`/products?category=${cat.id}`"
           @click="$emit('close')"
-          class="group flex flex-col items-center gap-3 p-4 rounded-2xl hover:bg-primary/5 hover:border-primary/20 border border-transparent transition-all text-center"
+          class="group rounded-2xl border border-transparent p-4 transition-all hover:border-primary/20 hover:bg-primary/5"
         >
-          <div class="w-14 h-14 rounded-2xl bg-muted/40 group-hover:bg-primary/10 flex items-center justify-center transition-all group-hover:scale-110">
-            <component :is="getIcon(cat.icon)" class="w-7 h-7 text-muted-foreground group-hover:text-primary transition-colors" />
+          <div class="flex items-start gap-3">
+            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-muted/40 transition-all group-hover:scale-110 group-hover:bg-primary/10">
+              <component :is="getIcon(cat.icon)" class="h-7 w-7 text-muted-foreground transition-colors group-hover:text-primary" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-black text-foreground transition-colors group-hover:text-primary">
+                {{ cat.label }}
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <span
+                  v-for="child in getChildren(cat.id).slice(0, 3)"
+                  :key="child.id"
+                  class="rounded-full bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground"
+                >
+                  {{ child.label }}
+                </span>
+                <span
+                  v-if="getChildren(cat.id).length > 3"
+                  class="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary"
+                >
+                  +{{ getChildren(cat.id).length - 3 }}
+                </span>
+              </div>
+            </div>
           </div>
-          <span class="text-[11px] font-black uppercase tracking-tight text-foreground group-hover:text-primary transition-colors leading-tight">
-            {{ cat.name }}
-          </span>
         </router-link>
       </div>
     </div>
@@ -29,16 +48,19 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { 
   Camera, Cpu, Activity, Radio, Database, ShieldCheck, 
   Flame, Lock, Wifi, Monitor, Box, Zap, LayoutGrid 
 } from 'lucide-vue-next';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useCategoryHierarchy } from '@/composables/useCategoryHierarchy';
 
 const { t, locale } = useI18n();
 const categoryStore = useCategoryStore();
+const categories = computed(() => categoryStore.localizedCategories(locale.value));
+const { rootCategories, getChildren } = useCategoryHierarchy(categories, locale);
 
 defineEmits(['close']);
 const props = defineProps({

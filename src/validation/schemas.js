@@ -37,6 +37,7 @@ export const vendorRegisterSchema = z.object({
 export const productSchema = z.object({
   titleAr: z.string().trim().min(3, 'Title (AR) is too short'),
   titleEn: z.string().trim().min(3, 'Title (EN) is too short'),
+  modelNumber: z.string().trim().max(120, 'Model number is too long').optional().or(z.literal('')),
   categoryId: z.number().int().positive('Category is required'),
   price: z.number().positive('Price must be positive'),
   minOrderQuantity: z.number().int().min(1).optional(),

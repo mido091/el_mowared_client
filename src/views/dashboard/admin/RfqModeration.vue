@@ -172,8 +172,9 @@
 
               <div class="rounded-3xl border border-border bg-white p-5 shadow-sm dark:bg-slate-950">
                 <h4 class="text-lg font-black text-foreground">{{ detailsLabel }}</h4>
-                <p class="mt-3 whitespace-pre-line text-sm leading-7 text-muted-foreground">
-                  {{ selectedRfq.description || noDescriptionLabel }}
+                <RfqItemsList class="mt-4" :items="selectedRfqItems" :item-label="whatNeededLabel" :details-label="productDetailsLabel" />
+                <p v-if="!selectedRfqItems.length" class="mt-3 whitespace-pre-line text-sm leading-7 text-muted-foreground">
+                  {{ noDescriptionLabel }}
                 </p>
               </div>
             </div>
@@ -277,6 +278,8 @@ import { useRfqStore } from '@/stores/rfqStore';
 import { normalizeError } from '@/utils/errorHandler';
 import { getApiData } from '@/utils/apiResponse';
 import { formatEGPCurrency } from '@/utils/currency';
+import { normalizeRfqItems } from '@/utils/rfqItems';
+import RfqItemsList from '@/components/rfq/RfqItemsList.vue';
 
 const { t } = useI18n();
 const notificationStore = useNotificationStore();
@@ -311,6 +314,8 @@ const copy = computed(() =>
         close: 'إغلاق',
         noDescription: 'لا يوجد وصف تفصيلي.',
         details: 'تفاصيل الطلب',
+        whatNeeded: 'ماذا تحتاج',
+        productDetails: 'تفاصيل المنتج',
         submittedBy: 'مقدم الطلب',
         rfqCard: 'بطاقة طلبات العروض',
         reject: 'رفض الطلب'
@@ -335,6 +340,8 @@ const copy = computed(() =>
         close: 'Close',
         noDescription: 'No detailed description.',
         details: 'RFQ Details',
+        whatNeeded: 'What do you need',
+        productDetails: 'Product details',
         submittedBy: 'Submitted By',
         rfqCard: 'RFQ Card',
         reject: 'Reject RFQ'
@@ -417,10 +424,13 @@ const unitsLabel = computed(() => t('rfqModeration.units'));
 const closeLabel = computed(() => copy.value.close);
 const noDescriptionLabel = computed(() => copy.value.noDescription);
 const detailsLabel = computed(() => copy.value.details);
+const whatNeededLabel = computed(() => copy.value.whatNeeded);
+const productDetailsLabel = computed(() => copy.value.productDetails);
 const submittedByLabel = computed(() => copy.value.submittedBy);
 const rfqCardLabel = computed(() => copy.value.rfqCard);
 const rejectLabel = computed(() => copy.value.reject);
 const resetFilterLabel = computed(() => copy.value.resetFilter);
+const selectedRfqItems = computed(() => normalizeRfqItems(selectedRfq.value));
 
 const selectedCategoryName = computed(() => {
   if (!selectedRfq.value) return '-';

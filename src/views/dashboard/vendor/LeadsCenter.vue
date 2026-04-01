@@ -19,16 +19,16 @@
     </div>
 
     <div class="rounded-2xl border border-border bg-white p-4 shadow-sm dark:bg-card">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-center">
         <div class="relative flex-1">
           <Search class="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input v-model.trim="search" type="text" :placeholder="labels.searchPlaceholder" class="form-input ps-10" />
         </div>
 
-        <div class="lg:w-72">
+        <div class="xl:w-72">
           <ResponsiveSelect
-            v-model="selectedCategoryId"
-            :options="categoryOptions"
+            v-model="selectedParentCategoryId"
+            :options="parentCategoryOptions"
             :placeholder="labels.allCategories"
             :sheet-title="labels.allCategories"
             :sheet-kicker="locale === 'ar' ? 'فلاتر الفرص' : 'Lead filters'"
@@ -99,7 +99,8 @@
 
           <div class="min-w-0 flex-1">
             <h3 class="line-clamp-1 text-xl font-black text-foreground">{{ lead.title }}</h3>
-            <p class="mt-2 line-clamp-2 text-sm text-muted-foreground">{{ lead.description }}</p>
+            <p class="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">{{ labels.items }}</p>
+            <RfqItemsList class="mt-3" :items="getLeadItems(lead)" :item-label="labels.whatNeeded" :details-label="labels.productDetails" compact />
           </div>
         </div>
 
@@ -174,6 +175,9 @@ import { useRfqStore } from '@/stores/rfqStore';
 import { formatEGPCurrency } from '@/utils/currency';
 import { normalizeError } from '@/utils/errorHandler';
 import ResponsiveSelect from '@/components/ui/ResponsiveSelect.vue';
+import { useCategoryHierarchy } from '@/composables/useCategoryHierarchy';
+import { getRfqItemsSearchText, normalizeRfqItems } from '@/utils/rfqItems';
+import RfqItemsList from '@/components/rfq/RfqItemsList.vue';
 
 const router = useRouter();
 const { locale } = useI18n();
@@ -184,7 +188,7 @@ const rfqStore = useRfqStore();
 
 const activeTab = ref('available');
 const search = ref('');
-const selectedCategoryId = ref(0);
+const selectedParentCategoryId = ref(0);
 const vendorProfileId = ref(null);
 
 const localized = (ar, en) => (locale.value === 'ar' ? ar : en);
@@ -206,6 +210,9 @@ const labels = computed(() => ({
   viewDetails: localized('عرض التفاصيل', 'View Details'),
   declineLead: localized('رفض الطلب', 'Decline RFQ'),
   declinedByYou: localized('مرفوض من طرفك', 'Declined by you'),
+  items: localized('البنود المطلوبة', 'Requested items'),
+  whatNeeded: localized('ماذا تحتاج', 'What do you need'),
+  productDetails: localized('تفاصيل المنتج', 'Product details'),
   emptyTitle: localized('لا توجد طلبات حالية', 'No active leads'),
   emptyDescription: localized('جرّب تغيير الفلتر أو انتظر حتى يتم بث طلبات جديدة لفئتك.', 'Try changing filters or wait for new RFQs to be broadcast to your category.'),
   tabOpen: localized('الجديدة والمفتوحة', 'New & Open'),
@@ -222,16 +229,17 @@ const labels = computed(() => ({
   declineError: localized('تعذر رفض الطلب حاليًا.', 'Unable to decline this RFQ right now.')
 }));
 
-const categories = computed(() => categoryStore.categories);
-const categoryOptions = computed(() => [
+const categories = computed(() => categoryStore.localizedCategories(locale.value));
+const { rootCategories, getChildren } = useCategoryHierarchy(categories, locale);
+const parentCategoryOptions = computed(() => [
   {
     value: 0,
     label: labels.value.allCategories,
     description: locale.value === 'ar' ? 'كل التخصصات المرتبطة بك' : 'All categories relevant to your profile',
   },
-  ...categories.value.map((category) => ({
+  ...rootCategories.value.map((category) => ({
     value: Number(category.id),
-    label: locale.value === 'ar' ? category.name_ar : category.name_en,
+    label: category.label,
     description: category.slug ? `/${category.slug}` : '',
   })),
 ]);
@@ -266,12 +274,20 @@ const tabLeads = computed(() => {
 const filteredLeads = computed(() => {
   const term = search.value.toLowerCase();
   return tabLeads.value.filter((lead) => {
-    const matchesCategory = !selectedCategoryId.value || Number(lead.category_id) === Number(selectedCategoryId.value);
-    const haystack = `${lead.title || ''} ${lead.description || ''} ${lead.user_name || ''}`.toLowerCase();
+    const selectedId = Number(selectedParentCategoryId.value || 0);
+    const allowedCategoryIds = selectedId
+      ? [selectedId, ...getChildren(selectedId).map((category) => Number(category.id))]
+      : [];
+    const matchesCategory = !selectedId || allowedCategoryIds.includes(Number(lead.category_id));
+    const haystack = `${lead.title || ''} ${lead.description || ''} ${getRfqItemsSearchText(lead)} ${lead.user_name || ''}`.toLowerCase();
     const matchesSearch = !term || haystack.includes(term);
     return matchesCategory && matchesSearch;
   });
 });
+
+function getLeadItems(lead) {
+  return normalizeRfqItems(lead).slice(0, 2);
+}
 
 function getCategoryName(lead) {
   return locale.value === 'ar'

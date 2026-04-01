@@ -60,7 +60,9 @@
                 </div>
              </div>
              
-             <p class="text-xs text-muted-foreground font-medium line-clamp-2 mb-8 leading-relaxed">{{ rfq.description }}</p>
+             <div class="mb-8">
+               <RfqItemsList :items="getPreviewItems(rfq)" :item-label="labels.whatNeeded" :details-label="labels.productDetails" compact />
+             </div>
              
              <div class="grid grid-cols-3 gap-4 mb-8">
                 <div class="p-3 rounded-2xl bg-muted/20 border border-border/30">
@@ -201,6 +203,8 @@ import BaseModal from '@/components/ui/BaseModal.vue';
 import BaseInput from '@/components/ui/BaseInput.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import EmptyState from '@/components/ui/EmptyState.vue';
+import RfqItemsList from '@/components/rfq/RfqItemsList.vue';
+import { normalizeRfqItems } from '@/utils/rfqItems';
 
 const { t, locale } = useI18n();
 const uiStore = useUiStore();
@@ -224,6 +228,11 @@ const quoteForm = reactive({
   notes: ''
 });
 
+const labels = computed(() => ({
+  whatNeeded: locale.value === 'ar' ? 'ماذا تحتاج' : 'What do you need',
+  productDetails: locale.value === 'ar' ? 'تفاصيل المنتج' : 'Product details'
+}));
+
 const quoteColumns = [
   { key: 'rfq_title', label: t('rfq.requirement') },
   { key: 'offered_price', label: t('rfq.offered_price') },
@@ -246,6 +255,7 @@ const filteredRfqs = computed(() => {
 const formatCurrency = (val) => formatEGPCurrency(val, locale.value);
 
 const formatDate = (d) => new Date(d).toLocaleDateString(locale.value === 'ar' ? 'ar-EG' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+const getPreviewItems = (rfq) => normalizeRfqItems(rfq).slice(0, 2);
 
 const fetchData = async () => {
   loading.value = true;
