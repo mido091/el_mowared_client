@@ -4,6 +4,8 @@ import api from '@/services/api';
 const PRESENCE_CHANNEL = 'presence-online-users';
 const USER_CHANNEL_PREFIX = 'private-user.';
 const CONVERSATION_CHANNEL_PREFIX = 'private-conversation.';
+const ROLE_CHANNEL_PREFIX = 'private-role.';
+const PUBLIC_MARKETPLACE_CHANNEL = 'public-marketplace';
 
 const getCurrentLocale = () => localStorage.getItem('locale') || document.documentElement.lang || 'en';
 
@@ -23,29 +25,55 @@ class SocketService {
     this.conversationRefs = new Map();
     this.conversationChannels = new Map();
     this.userChannel = null;
+    this.roleChannel = null;
+    this.publicChannel = null;
     this.presenceChannel = null;
     this.token = null;
     this.userId = null;
+    this.userRole = null;
     this.dedupeCache = new Map();
     this.presenceHeartbeat = null;
   }
 
   connect(token) {
-    if (!token) return false;
-
     const currentUser = parseCurrentUser();
-    if (!currentUser?.id) {
-      console.warn('[Pusher] user context missing, skipping realtime connect');
-      return false;
-    }
+    const hasPrivateContext = Boolean(token && currentUser?.id);
+    const requestedUserId = hasPrivateContext ? Number(currentUser.id) : null;
+    const requestedRole = hasPrivateContext ? `${currentUser.role || ''}`.toLowerCase() : null;
 
-    if (this.pusher && this.token === token && Number(this.userId) === Number(currentUser.id)) {
+    if (
+      this.pusher
+      && this.token === (token || null)
+      && Number(this.userId || 0) === Number(requestedUserId || 0)
+    ) {
       return true;
     }
 
+    if (this.pusher) {
+      if (!hasPrivateContext) {
+        this.subscribePublicChannel();
+        return true;
+      }
+
+      if (Number(this.userId || 0) === Number(requestedUserId || 0)) {
+        this.token = token || null;
+        this.userId = requestedUserId;
+        this.userRole = requestedRole;
+        this.subscribePublicChannel();
+        this.subscribeUserChannel();
+        this.subscribeRoleChannel();
+        this.subscribePresenceChannel();
+        Array.from(this.conversationRefs.keys()).forEach((conversationId) => {
+          this.subscribeConversationChannel(conversationId);
+        });
+        return true;
+      }
+    }
+
     this.disconnect();
-    this.token = token;
-    this.userId = currentUser.id;
+    this.token = token || null;
+    this.userId = requestedUserId;
+    this.userRole = requestedRole;
 
     const key = import.meta.env.VITE_PUSHER_KEY;
     const cluster = import.meta.env.VITE_PUSHER_CLUSTER;
@@ -100,8 +128,13 @@ class SocketService {
       console.error('[Pusher] Connection error', error);
     });
 
-    this.subscribeUserChannel();
-    this.subscribePresenceChannel();
+    this.subscribePublicChannel();
+
+    if (hasPrivateContext) {
+      this.subscribeUserChannel();
+      this.subscribeRoleChannel();
+      this.subscribePresenceChannel();
+    }
 
     Array.from(this.conversationRefs.keys()).forEach((conversationId) => {
       this.subscribeConversationChannel(conversationId);
@@ -235,12 +268,60 @@ class SocketService {
     const channelName = `${USER_CHANNEL_PREFIX}${this.userId}`;
     this.userChannel = this.ensureChannel(channelName, [
       'notification',
+      'notification.created',
       'new_rfq',
+      'rfq.created',
+      'rfq.feed.changed',
+      'rfq_feed_updated',
+      'rfq_updated',
+      'rfq.updated',
       'new_message',
       'support_assigned',
       'order_update',
+      'order.updated',
       'new_quote',
-      'conversation_deleted'
+      'quote.created',
+      'conversation_deleted',
+      'product_status_changed',
+      'product_moderation_updated',
+      'product.created',
+      'product.updated',
+      'product.reviewed',
+      'product.deleted',
+      'dashboard.metrics.changed'
+    ]);
+  }
+
+  subscribeRoleChannel() {
+    if (!this.pusher || !this.userRole) return;
+
+    let roleKey = '';
+    if (['admin', 'owner'].includes(this.userRole)) roleKey = 'admin';
+    else if (this.userRole === 'mowared') roleKey = 'vendor';
+
+    if (!roleKey) return;
+
+    const channelName = `${ROLE_CHANNEL_PREFIX}${roleKey}`;
+    this.roleChannel = this.ensureChannel(channelName, [
+      'rfq.created',
+      'rfq.updated',
+      'product.created',
+      'product.updated',
+      'product.reviewed',
+      'product.deleted',
+      'dashboard.metrics.changed'
+    ]);
+  }
+
+  subscribePublicChannel() {
+    if (!this.pusher) return;
+
+    this.publicChannel = this.ensureChannel(PUBLIC_MARKETPLACE_CHANNEL, [
+      'product.created',
+      'product.updated',
+      'product.reviewed',
+      'product.deleted',
+      'dashboard.metrics.changed'
     ]);
   }
 
@@ -389,12 +470,56 @@ class SocketService {
       return `new_rfq:${payload.rfq_id || payload.rfqId || ''}`;
     }
 
+    if (eventName === 'rfq_feed_updated') {
+      return `rfq_feed_updated:${payload.rfqId || payload.rfq_id || ''}:${payload.status || ''}`;
+    }
+
+    if (eventName === 'rfq.feed.changed') {
+      return `rfq.feed.changed:${payload.rfqId || payload.rfq_id || ''}:${payload.status || ''}`;
+    }
+
+    if (eventName === 'rfq_updated') {
+      return `rfq_updated:${payload.rfqId || payload.rfq_id || ''}:${payload.status || ''}`;
+    }
+
+    if (eventName === 'rfq.created') {
+      return `rfq.created:${payload.rfqId || payload.rfq_id || ''}:${payload.status || ''}`;
+    }
+
     if (eventName === 'new_quote') {
       return `new_quote:${payload.quoteId || ''}`;
     }
 
+    if (eventName === 'quote.created') {
+      return `quote.created:${payload.quoteId || ''}:${payload.rfqId || ''}`;
+    }
+
     if (eventName === 'order_update') {
       return `order_update:${payload.orderId || ''}:${payload.status || ''}:${payload.message || ''}`;
+    }
+
+    if (eventName === 'product_status_changed') {
+      return `product_status_changed:${payload.productId || ''}:${payload.lifecycleStatus || ''}:${payload.link || ''}`;
+    }
+
+    if (eventName === 'product_moderation_updated') {
+      return `product_moderation_updated:${payload.productId || ''}:${payload.lifecycleStatus || ''}:${payload.link || ''}`;
+    }
+
+    if (['product.created', 'product.updated', 'product.reviewed', 'product.deleted'].includes(eventName)) {
+      return `${eventName}:${payload.productId || payload.productIds?.join(',') || ''}:${payload.lifecycleStatus || ''}:${payload.revision || ''}`;
+    }
+
+    if (eventName === 'dashboard.metrics.changed') {
+      return `dashboard.metrics.changed:${payload.scope || ''}:${payload.entity || ''}:${payload.orderId || payload.productId || payload.rfqId || ''}:${payload.status || payload.lifecycleStatus || ''}:${payload.revision || ''}`;
+    }
+
+    if (eventName === 'notification.created') {
+      return `notification.created:${payload.id || ''}`;
+    }
+
+    if (eventName === 'order.updated') {
+      return `order.updated:${payload.orderId || ''}:${payload.status || ''}:${payload.revision || ''}`;
     }
 
     return null;
@@ -409,6 +534,8 @@ class SocketService {
 
     this.pusher = null;
     this.userChannel = null;
+    this.roleChannel = null;
+    this.publicChannel = null;
     this.presenceChannel = null;
     this.conversationChannels.clear();
     this.channelBindings.clear();
@@ -416,6 +543,7 @@ class SocketService {
     this.dedupeCache.clear();
     this.token = null;
     this.userId = null;
+    this.userRole = null;
   }
 
   startPresenceHeartbeat() {

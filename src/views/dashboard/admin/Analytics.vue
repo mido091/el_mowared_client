@@ -97,32 +97,15 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { RefreshCw } from 'lucide-vue-next';
-import api from '@/services/api';
+import { useAdminStatsStore } from '@/stores/adminStatsStore';
 
 const { locale } = useI18n();
-const loading = ref(false);
-
-const stats = reactive({
-  rfq_volume: 0,
-  active_leads: 0,
-  total_revenue: 0,
-  lost_to_expiry: 0,
-  funnel: {
-    created: 0,
-    broadcasted: 0,
-    offered: 0,
-    converted: 0
-  },
-  vendor_performance: {
-    avg_response_time_seconds: 0,
-    avg_acceptance_rate: 0,
-    avg_ghosting_ratio: 0
-  },
-  leaderboard: []
-});
+const adminStatsStore = useAdminStatsStore();
+const loading = computed(() => adminStatsStore.loading);
+const stats = adminStatsStore.stats;
 
 const title = computed(() => (locale.value === 'ar' ? 'التحليلات' : 'Analytics'));
 const subtitle = computed(() => (locale.value === 'ar'
@@ -164,26 +147,7 @@ const funnelRows = computed(() => {
 const leaderboard = computed(() => Array.isArray(stats.leaderboard) ? stats.leaderboard : []);
 
 const fetchData = async () => {
-  loading.value = true;
-  try {
-    const response = await api.get('/admin/stats');
-    const payload = response?.data || response || {};
-    Object.assign(stats, {
-      rfq_volume: Number(payload.rfq_volume || 0),
-      active_leads: Number(payload.active_leads || 0),
-      total_revenue: Number(payload.total_revenue || 0),
-      lost_to_expiry: Number(payload.lost_to_expiry || 0),
-      funnel: payload.funnel || { created: 0, broadcasted: 0, offered: 0, converted: 0 },
-      vendor_performance: payload.vendor_performance || {
-        avg_response_time_seconds: 0,
-        avg_acceptance_rate: 0,
-        avg_ghosting_ratio: 0
-      },
-      leaderboard: Array.isArray(payload.leaderboard) ? payload.leaderboard : []
-    });
-  } finally {
-    loading.value = false;
-  }
+  await adminStatsStore.fetchStats({ fresh: true });
 };
 
 const formatPercent = (value) => `${Math.round(Number(value || 0))}%`;

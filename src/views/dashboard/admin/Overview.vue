@@ -106,10 +106,10 @@ import { useI18n } from 'vue-i18n';
 import { 
   ShieldCheck, Check, X, CreditCard, UserPlus, FileText
 } from 'lucide-vue-next';
-import api from '@/services/api';
 import { useUiStore } from '@/stores/ui';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useAdminVendorsStore } from '@/stores/adminVendorsStore';
+import { useAdminStatsStore } from '@/stores/adminStatsStore';
 import DashCard from '@/components/dashboard/DashCard.vue';
 import DataTable from '@/components/ui/DataTable.vue';
 
@@ -117,8 +117,9 @@ const { t } = useI18n();
 const uiStore = useUiStore();
 const notificationStore = useNotificationStore();
 const vendorsStore = useAdminVendorsStore();
+const adminStatsStore = useAdminStatsStore();
 const { vendors, loading } = storeToRefs(vendorsStore);
-const stats = ref({ pending_payments: 0, open_rfqs: 0 });
+const stats = computed(() => adminStatsStore.stats);
 const adminLogs = ref([]);
 const pendingVendors = computed(() => vendors.value.filter((item) => `${item.verification_status || ''}`.toUpperCase() === 'PENDING'));
 
@@ -149,12 +150,11 @@ const rejectVendor = async (id) => {
 
 const fetchData = async () => {
   try {
-    const [statRes] = await Promise.all([
-      api.get('/admin/stats'),
+    await Promise.all([
+      adminStatsStore.fetchStats({ fresh: true }),
       vendorsStore.fetchVendors({ status: 'PENDING', mode: 'revalidate' })
     ]);
     // api.js interceptor already unwraps response.data — use directly
-    stats.value = statRes || { pending_payments: 0, open_rfqs: 0 };
     adminLogs.value = [];
   } catch (err) { console.error('Admin Error:', err); }
 };

@@ -138,18 +138,20 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { BarChart2, X } from 'lucide-vue-next';
 import api from '@/services/api';
 import { getApiCollection } from '@/utils/apiResponse';
 import { buildProductPath } from '@/utils/routes';
 import { useComparisonStore } from '@/stores/comparison';
+import { useMarketplaceRealtimeStore } from '@/stores/marketplaceRealtimeStore';
 import { formatEGPCurrency } from '@/utils/currency';
 import EmptyState from '@/components/ui/EmptyState.vue';
 
 const { t, te, locale } = useI18n();
 const comparisonStore = useComparisonStore();
+const marketplaceRealtimeStore = useMarketplaceRealtimeStore();
 
 const products = ref([]);
 const loading = ref(false);
@@ -385,4 +387,20 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+watch(
+  () => marketplaceRealtimeStore.productRevision,
+  async (revision, previousRevision) => {
+    if (!revision || revision === previousRevision || !comparisonStore.ids.length) return;
+    loading.value = true;
+    try {
+      const res = await api.get('/products/compare', { params: { ids: comparisonStore.ids.join(',') } });
+      products.value = getApiCollection(res, ['products', 'items']);
+    } catch {
+      products.value = comparisonStore.products;
+    } finally {
+      loading.value = false;
+    }
+  }
+);
 </script>

@@ -1,9 +1,48 @@
 import { defineStore } from 'pinia';
-import { useAuthStore } from './auth';
+import api from '@/services/api';
 import socketService from '@/services/socket.service';
+import { useAuthStore } from './auth';
+import { useRfqStore } from './rfqStore';
+import { useVendorProductsStore } from './vendorProductsStore';
+import { useAdminProductModerationStore } from './adminProductModerationStore';
+import { useVendorOrdersStore } from './vendorOrdersStore';
+import { useVendorDashboardStore } from './vendorDashboardStore';
+import { useInsightsStore } from './insightsStore';
+import { useAdminStatsStore } from './adminStatsStore';
+import { useLeadsStore } from './leadsStore';
+import { useUserOrdersStore } from './userOrdersStore';
+import { getApiCollection, getApiData } from '@/utils/apiResponse';
 
 let toastId = 0;
 let dialogId = 0;
+
+const currentLocale = () => localStorage.getItem('locale') || document.documentElement.lang || 'en';
+const localize = (ar, en) => (currentLocale().startsWith('ar') ? ar : en);
+
+const normalizeIncomingNotification = (notification = {}) => ({
+  id: notification.id || Date.now() + Math.random(),
+  read: Boolean(notification.is_read ?? notification.read ?? false),
+  timestamp: notification.created_at || notification.timestamp || new Date().toISOString(),
+  titleAr: notification.titleAr || notification.title_ar || '',
+  titleEn: notification.titleEn || notification.title_en || '',
+  contentAr: notification.contentAr || notification.content_ar || '',
+  contentEn: notification.contentEn || notification.content_en || '',
+  message: notification.message
+    || notification.content
+    || notification.contentEn
+    || notification.content_en
+    || notification.contentAr
+    || notification.content_ar
+    || notification.title
+    || notification.titleEn
+    || notification.title_en
+    || notification.titleAr
+    || notification.title_ar
+    || '',
+  type: notification.type || 'info',
+  link: notification.link || '',
+  notificationType: notification.notificationType || notification.type || '',
+});
 
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
@@ -12,7 +51,7 @@ export const useNotificationStore = defineStore('notifications', {
     connected: false,
     initialized: false,
     toasts: [],
-    activeDialog: null
+    activeDialog: null,
   }),
 
   actions: {
@@ -44,7 +83,7 @@ export const useNotificationStore = defineStore('notifications', {
           inputValue: '',
           loading: false,
           resolve,
-          ...options
+          ...options,
         };
       });
     },
@@ -70,7 +109,7 @@ export const useNotificationStore = defineStore('notifications', {
           title: title || 'Error',
           message,
           type: 'error',
-          showCancel: false
+          showCancel: false,
         });
       }
       return this.addToast(message, 'error');
@@ -89,7 +128,7 @@ export const useNotificationStore = defineStore('notifications', {
         title,
         message,
         type: 'confirm',
-        onConfirm
+        onConfirm,
       });
     },
 
@@ -100,7 +139,7 @@ export const useNotificationStore = defineStore('notifications', {
         type: 'success',
         confirmText: 'common.ok',
         showCancel: false,
-        variant: 'payment'
+        variant: 'payment',
       });
     },
 
@@ -111,7 +150,7 @@ export const useNotificationStore = defineStore('notifications', {
         type: 'error',
         confirmText: 'common.refresh',
         onConfirm: retryCallback,
-        variant: 'error'
+        variant: 'error',
       });
     },
 
@@ -121,13 +160,129 @@ export const useNotificationStore = defineStore('notifications', {
         message: 'auth.secureNote',
         type: 'prompt',
         placeholder: 'auth.passwordPlaceholder',
-        variant: 'identity'
+        variant: 'identity',
       });
+    },
+
+    async fetchNotifications(limit = 30) {
+      const auth = useAuthStore();
+      if (!auth.isAuthenticated) return [];
+
+      try {
+        const response = await api.get('/notifications', {
+          params: { page: 1, limit },
+          errorMode: 'silent',
+          redirectOn401: false,
+        });
+        const payload = getApiData(response) || {};
+        const notifications = getApiCollection(response, ['notifications']).map(normalizeIncomingNotification);
+        this.notifications = notifications;
+        this.unreadCount = Number(payload.unreadCount || notifications.filter((item) => !item.read).length || 0);
+        return notifications;
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn('[notifications] fetch failed', error);
+        }
+        return [];
+      }
+    },
+
+    async refreshRfqViews() {
+      const rfqStore = useRfqStore();
+      rfqStore.ensureSync();
+
+      const jobs = [];
+      if (rfqStore.lastFetchedFeed) jobs.push(rfqStore.fetchFeed({ mode: 'fresh', silent: true }));
+      if (rfqStore.lastFetchedPublic) jobs.push(rfqStore.fetchPublicRfqs({ mode: 'fresh', silent: true }));
+      if (rfqStore.lastFetchedAdmin) jobs.push(rfqStore.fetchAdminRfqs({ mode: 'fresh', silent: true }));
+
+      if (!jobs.length) {
+        jobs.push(rfqStore.fetchFeed({ mode: 'fresh', silent: true }));
+      }
+
+      await Promise.allSettled(jobs);
+    },
+
+    async refreshProductViews(eventName) {
+      const auth = useAuthStore();
+      const jobs = [];
+
+      if (eventName === 'product_status_changed' && auth.isVendor) {
+        const vendorProductsStore = useVendorProductsStore();
+        vendorProductsStore.ensureSync();
+        jobs.push(vendorProductsStore.fetchVendorProducts({ mode: 'fresh', silent: true }));
+      }
+
+      if (eventName === 'product_moderation_updated' && auth.isAdmin) {
+        const adminProductModerationStore = useAdminProductModerationStore();
+        adminProductModerationStore.ensureSync();
+        jobs.push(adminProductModerationStore.fetchProducts(adminProductModerationStore.activeTab, { mode: 'fresh', silent: true }));
+        jobs.push(adminProductModerationStore.fetchSummary({ mode: 'fresh' }));
+      }
+
+      if (jobs.length) {
+        await Promise.allSettled(jobs);
+      }
+    },
+
+    async refreshOrderViews() {
+      const auth = useAuthStore();
+      const jobs = [];
+
+      if (auth.isVendor) {
+        const vendorOrdersStore = useVendorOrdersStore();
+        jobs.push(vendorOrdersStore.fetchVendorOrders());
+      }
+
+      if (`${auth.user?.role || ''}`.toLowerCase() === 'user') {
+        const userOrdersStore = useUserOrdersStore();
+        jobs.push(userOrdersStore.fetchOrders({ silent: true, fresh: true }));
+      }
+
+      if (jobs.length) {
+        await Promise.allSettled(jobs);
+      }
+    },
+
+    async refreshDashboardViews(payload = {}) {
+      const auth = useAuthStore();
+      const scope = `${payload?.scope || ''}`.toLowerCase();
+      const jobs = [];
+
+      if (auth.isVendor && (!scope || scope === 'vendor')) {
+        const vendorDashboardStore = useVendorDashboardStore();
+        const insightsStore = useInsightsStore();
+        const leadsStore = useLeadsStore();
+        jobs.push(vendorDashboardStore.fetchOverviewData());
+        jobs.push(insightsStore.fetchMarketInsights());
+        jobs.push(insightsStore.fetchStockAlerts());
+        jobs.push(leadsStore.fetchLeads());
+      }
+
+      if (auth.isAdmin && (!scope || scope === 'admin')) {
+        const adminStatsStore = useAdminStatsStore();
+        jobs.push(adminStatsStore.fetchStats({ silent: true, fresh: true }));
+      }
+
+      if (jobs.length) {
+        await Promise.allSettled(jobs);
+      }
+    },
+
+    async handleRealtimeNotification(payload = {}, options = {}) {
+      const normalized = normalizeIncomingNotification(payload);
+      this.addNotification(normalized);
+
+      if (options.toast !== false && normalized.message) {
+        this.addToast(normalized.message, normalized.type || 'info');
+      }
     },
 
     init() {
       const auth = useAuthStore();
       if (!auth.isAuthenticated || this.initialized) return;
+
+      this.fetchNotifications().catch(() => {});
 
       const connected = socketService.connect(auth.token);
       if (!connected) {
@@ -139,20 +294,89 @@ export const useNotificationStore = defineStore('notifications', {
       this.connected = true;
       this.initialized = true;
 
-      const currentLocale = () => localStorage.getItem('locale') || document.documentElement.lang || 'en';
-      const localize = (ar, en) => (currentLocale().startsWith('ar') ? ar : en);
-
-      socketService.on('notification', (payload) => {
+      socketService.on('notification', async (payload) => {
         if (payload?.notificationType === 'SUPPORT_REPLY') return;
-        const message = payload?.messageAr || payload?.message || payload?.titleAr || payload?.titleEn || '';
-        this.addNotification({ ...payload, message });
-        if (message) this.addToast(message, payload?.type || 'info');
+        await this.handleRealtimeNotification(payload);
       });
 
-      socketService.on('new_rfq', (data) => {
-        const msg = data?.message || localize('يوجد طلب عروض جديد مناسب لك', 'New RFQ matching your categories!');
-        this.addNotification({ message: msg, type: 'success', link: '/dashboard/vendor/leads' });
-        this.addToast(msg, 'success');
+      socketService.on('notification.created', async (payload) => {
+        if (payload?.notificationType === 'SUPPORT_REPLY') return;
+        await this.handleRealtimeNotification(payload, { toast: false });
+      });
+
+      socketService.on('new_rfq', async (data) => {
+        const msg = data?.message || data?.messageEn || localize('يوجد طلب عروض جديد مناسب لك', 'New RFQ matching your categories!');
+        await this.handleRealtimeNotification({
+          ...data,
+          message: msg,
+          type: 'success',
+          link: data?.link || '/dashboard/vendor/leads',
+        });
+        await this.refreshRfqViews();
+      });
+
+      socketService.on('rfq_feed_updated', async () => {
+        await this.refreshRfqViews();
+      });
+
+      socketService.on('rfq.feed.changed', async () => {
+        await this.refreshRfqViews();
+      });
+
+      socketService.on('rfq_updated', async () => {
+        await this.refreshRfqViews();
+      });
+
+      socketService.on('rfq.updated', async () => {
+        await this.refreshRfqViews();
+      });
+
+      socketService.on('rfq.created', async () => {
+        await this.refreshRfqViews();
+        await this.refreshDashboardViews({ scope: 'vendor' });
+      });
+
+      socketService.on('product_status_changed', async (data) => {
+        if (data?.message || data?.messageEn || data?.messageAr) {
+          await this.handleRealtimeNotification({
+            ...data,
+            message: data?.message || data?.messageEn || data?.messageAr,
+            type: data?.type || 'info',
+          });
+        }
+        await this.refreshProductViews('product_status_changed');
+      });
+
+      socketService.on('product_moderation_updated', async (data) => {
+        if (data?.message || data?.messageEn || data?.messageAr) {
+          await this.handleRealtimeNotification({
+            ...data,
+            message: data?.message || data?.messageEn || data?.messageAr,
+            type: data?.type || 'info',
+          });
+        }
+        await this.refreshProductViews('product_moderation_updated');
+      });
+
+      socketService.on('product.created', async () => {
+        await this.refreshProductViews('product_moderation_updated');
+        await this.refreshDashboardViews({ scope: 'admin' });
+      });
+
+      socketService.on('product.updated', async () => {
+        await this.refreshProductViews('product_moderation_updated');
+        await this.refreshDashboardViews({ scope: 'admin' });
+      });
+
+      socketService.on('product.reviewed', async (data) => {
+        await this.refreshProductViews('product_status_changed');
+        await this.refreshProductViews('product_moderation_updated');
+        await this.refreshDashboardViews({ scope: data?.scope || '' });
+      });
+
+      socketService.on('product.deleted', async () => {
+        await this.refreshProductViews('product_status_changed');
+        await this.refreshProductViews('product_moderation_updated');
       });
 
       socketService.on('new_message', (data) => {
@@ -182,23 +406,73 @@ export const useNotificationStore = defineStore('notifications', {
         this.addNotification({ message: msg, type: 'info', link: '/dashboard/user/orders' });
         this.addToast(msg, 'info');
       });
+
+      socketService.on('order.updated', async (data) => {
+        await this.refreshOrderViews();
+        await this.refreshDashboardViews({ scope: 'vendor' });
+
+        if (data?.orderId) {
+          this.addNotification({
+            message: localize(
+              `Order ${data.orderId} updated`,
+              `Order #${data.orderId} updated`
+            ),
+            type: 'info',
+            link: '/dashboard/user/orders',
+          });
+        }
+      });
+
+      socketService.on('dashboard.metrics.changed', async (payload) => {
+        await this.refreshDashboardViews(payload);
+      });
+
+      socketService.on('quote.created', async () => {
+        await this.refreshRfqViews();
+      });
     },
 
     addNotification(notification) {
-      this.notifications.unshift({
-        id: Date.now() + Math.random(),
-        read: false,
-        timestamp: new Date().toISOString(),
-        ...notification
-      });
-      this.unreadCount += 1;
+      const normalized = normalizeIncomingNotification(notification);
+      const existingIndex = this.notifications.findIndex((item) => String(item.id) === String(normalized.id));
+
+      if (existingIndex !== -1) {
+        this.notifications.splice(existingIndex, 1, {
+          ...this.notifications[existingIndex],
+          ...normalized,
+        });
+      } else {
+        this.notifications.unshift(normalized);
+      }
+
+      if (!normalized.read) {
+        const unreadSet = new Set(
+          this.notifications
+            .filter((item) => !item.read)
+            .map((item) => String(item.id))
+        );
+        this.unreadCount = unreadSet.size;
+      }
     },
 
-    markAsRead(id) {
-      const notification = this.notifications.find((item) => item.id === id);
-      if (notification && !notification.read) {
-        notification.read = true;
-        this.unreadCount = Math.max(0, this.unreadCount - 1);
+    async markAsRead(id) {
+      const notification = this.notifications.find((item) => String(item.id) === String(id));
+      if (!notification || notification.read) return;
+
+      notification.read = true;
+      this.unreadCount = Math.max(0, this.unreadCount - 1);
+
+      if (/^\d+$/.test(String(id))) {
+        try {
+          await api.patch(`/notifications/${id}/read`, null, {
+            errorMode: 'silent',
+            redirectOn401: false,
+          });
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.warn('[notifications] markAsRead failed', error);
+          }
+        }
       }
     },
 
@@ -207,17 +481,36 @@ export const useNotificationStore = defineStore('notifications', {
         notification.read = true;
       });
       this.unreadCount = 0;
+      api.patch('/notifications/read-all', null, {
+        errorMode: 'silent',
+        redirectOn401: false,
+      }).catch(() => {});
     },
 
     disconnect() {
       socketService.off('notification');
+      socketService.off('notification.created');
       socketService.off('new_rfq');
+      socketService.off('rfq.created');
+      socketService.off('rfq.feed.changed');
+      socketService.off('rfq_feed_updated');
+      socketService.off('rfq_updated');
+      socketService.off('rfq.updated');
+      socketService.off('product.created');
+      socketService.off('product.updated');
+      socketService.off('product.reviewed');
+      socketService.off('product.deleted');
+      socketService.off('product_status_changed');
+      socketService.off('product_moderation_updated');
       socketService.off('new_message');
       socketService.off('support_assigned');
       socketService.off('order_update');
+      socketService.off('order.updated');
+      socketService.off('dashboard.metrics.changed');
+      socketService.off('quote.created');
       socketService.disconnect();
       this.connected = false;
       this.initialized = false;
-    }
-  }
+    },
+  },
 });

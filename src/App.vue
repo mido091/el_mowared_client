@@ -17,6 +17,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useChatStore } from '@/stores/chat';
+import { useMarketplaceRealtimeStore } from '@/stores/marketplaceRealtimeStore';
 import NotificationProvider from '@/components/ui/NotificationProvider.vue';
 
 import MainLayout from '@/layouts/MainLayout.vue';
@@ -33,6 +34,7 @@ const authStore = useAuthStore();
 const settingsStore = useSettingsStore();
 const notificationStore = useNotificationStore();
 const chatStore = useChatStore();
+const marketplaceRealtimeStore = useMarketplaceRealtimeStore();
 const GlobalChatWidget = defineAsyncComponent(() => import('@/components/chat/GlobalChatWidget.vue'));
 const globalWidgetReady = ref(false);
 let cleanupRealtimeInit = null;
@@ -90,6 +92,7 @@ onMounted(() => {
   if (uiStore.isDark) document.documentElement.classList.add('dark');
 
   window.addEventListener('app:logout', handleAppLogout);
+  marketplaceRealtimeStore.init();
 
   // Restore auth session if token exists
   if (authStore.token && !authStore.user) {

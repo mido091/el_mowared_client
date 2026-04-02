@@ -351,6 +351,7 @@ import { useI18n } from 'vue-i18n';
 import { Filter, Package, X } from 'lucide-vue-next';
 import api from '@/services/api';
 import { useCategoryStore } from '@/stores/categoryStore';
+import { useMarketplaceRealtimeStore } from '@/stores/marketplaceRealtimeStore';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
 import { formatEGPCurrency } from '@/utils/currency';
 import { useSeo } from '@/composables/useSeo';
@@ -366,6 +367,7 @@ import { whenBrowserIdle } from '@/utils/scheduling';
 const { locale } = useI18n();
 const route = useRoute();
 const categoryStore = useCategoryStore();
+const marketplaceRealtimeStore = useMarketplaceRealtimeStore();
 
 const products = ref([]);
 const loading = ref(true);
@@ -714,6 +716,14 @@ watch(
     if (!selectedChildStillValid) {
       filters.childCategory = '';
     }
+  }
+);
+
+watch(
+  () => marketplaceRealtimeStore.productRevision,
+  (revision, previousRevision) => {
+    if (!revision || revision === previousRevision) return;
+    fetchProducts();
   }
 );
 

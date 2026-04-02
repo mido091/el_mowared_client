@@ -493,6 +493,7 @@ import api from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import { useChatStore } from '@/stores/chat';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { useMarketplaceRealtimeStore } from '@/stores/marketplaceRealtimeStore';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
 import { formatEGPCurrency } from '@/utils/currency';
 import { useSeo } from '@/composables/useSeo';
@@ -508,6 +509,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const chatStore = useChatStore();
 const notificationStore = useNotificationStore();
+const marketplaceRealtimeStore = useMarketplaceRealtimeStore();
 
 const loading = ref(true);
 const product = ref(null);
@@ -912,5 +914,12 @@ useSeo(() => ({
 }));
 
 watch(() => route.params.id, loadProduct);
+watch(
+  () => marketplaceRealtimeStore.productRevision,
+  (revision, previousRevision) => {
+    if (!revision || revision === previousRevision || !product.value?.id) return;
+    loadProduct();
+  }
+);
 onMounted(loadProduct);
 </script>

@@ -133,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { 
   ShoppingBag, Upload, Eye, Package, 
@@ -142,24 +142,27 @@ import {
 import api from '@/services/api';
 import { formatEGPCurrency } from '@/utils/currency';
 import { useUiStore } from '@/stores/ui';
+import { useUserOrdersStore } from '@/stores/userOrdersStore';
 import DashCard from '@/components/dashboard/DashCard.vue';
 import DataTable from '@/components/ui/DataTable.vue';
 import BaseModal from '@/components/ui/BaseModal.vue';
 
 const { t, locale } = useI18n();
 const uiStore = useUiStore();
+const ordersStore = useUserOrdersStore();
 
-const loading = ref(true);
 const uploading = ref(false);
-const orders = ref([]);
-const activeStatus = ref('ALL');
-const page = ref(1);
-const totalPages = ref(1);
-
 const uploadingOrder = ref(null);
 const receiptFile = ref(null);
 const receiptPreview = ref(null);
 const selectedOrder = ref(null);
+
+const loading = computed(() => ordersStore.loading);
+const orders = computed(() => ordersStore.orders);
+const activeStatus = computed({
+  get: () => ordersStore.activeStatus,
+  set: (value) => ordersStore.setStatus(value),
+});
 
 const statuses = ['ALL', 'PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED'];
 
@@ -180,16 +183,10 @@ const getStatusBadge = (status) => {
 };
 
 const fetchOrders = async () => {
-  loading.value = true;
   try {
-    const res = await api.get('/orders', { params: { status: activeStatus.value !== 'ALL' ? activeStatus.value : undefined, page: page.value } });
-    // api.js interceptor already unwraps response.data
-    orders.value = Array.isArray(res) ? res : (res?.orders ?? res?.data ?? []);
-    totalPages.value = res?.pagination?.total_pages || 1;
+    await ordersStore.fetchOrders();
   } catch (err) {
     uiStore.showToast('Failed to fetch orders', 'error');
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -234,6 +231,9 @@ const submitReceipt = async () => {
   }
 };
 
-watch([activeStatus, page], fetchOrders);
+watch(
+  [() => ordersStore.activeStatus, () => ordersStore.page],
+  fetchOrders
+);
 onMounted(fetchOrders);
 </script>

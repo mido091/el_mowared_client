@@ -224,7 +224,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useIntersectionObserver } from '@vueuse/core';
@@ -237,6 +237,7 @@ import api from '@/services/api';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
 import { useCategoryStore } from '@/stores/categoryStore';
 import { useSettingsStore } from '@/stores/settings';
+import { useMarketplaceRealtimeStore } from '@/stores/marketplaceRealtimeStore';
 import AppImage from '@/components/ui/AppImage.vue';
 import { useSeo } from '@/composables/useSeo';
 import { useCategoryHierarchy } from '@/composables/useCategoryHierarchy';
@@ -250,6 +251,7 @@ const { t, locale } = useI18n();
 const router = useRouter();
 const categoryStore = useCategoryStore();
 const settingsStore = useSettingsStore();
+const marketplaceRealtimeStore = useMarketplaceRealtimeStore();
 
 const heroSearch = ref('');
 const selectedCategory = ref(null);
@@ -443,5 +445,23 @@ onMounted(() => {
   };
   whenBrowserIdle(schedule, 150);
 });
+
+watch(
+  () => marketplaceRealtimeStore.productRevision,
+  (revision, previousRevision) => {
+    if (!revision || revision === previousRevision) return;
+    if (hasLoadedFeatured.value) {
+      loadFeaturedProducts();
+    }
+  }
+);
+
+watch(
+  () => marketplaceRealtimeStore.summaryRevision,
+  (revision, previousRevision) => {
+    if (!revision || revision === previousRevision) return;
+    loadMarketplaceSummary();
+  }
+);
 </script>
 

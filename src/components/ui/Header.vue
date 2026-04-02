@@ -514,6 +514,7 @@ import { useUiStore } from '@/stores/ui';
 import { useComparisonStore } from '@/stores/comparison';
 import { useSettingsStore } from '@/stores/settings';
 import { useChatStore } from '@/stores/chat';
+import { useMarketplaceRealtimeStore } from '@/stores/marketplaceRealtimeStore';
 import api from '@/services/api';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
 import AppImage from '@/components/ui/AppImage.vue';
@@ -530,6 +531,7 @@ const uiStore = useUiStore();
 const comparisonStore = useComparisonStore();
 const settingsStore = useSettingsStore();
 const chatStore = useChatStore();
+const marketplaceRealtimeStore = useMarketplaceRealtimeStore();
 
 const searchQuery = ref('');
 const megaOpen = ref(false);
@@ -720,6 +722,14 @@ watch(searchQuery, () => {
   }
   scheduleSearch();
 });
+
+watch(
+  () => marketplaceRealtimeStore.productRevision,
+  (revision, previousRevision) => {
+    if (!revision || revision === previousRevision || !searchOpen.value || !normalizedQuery.value) return;
+    scheduleSearch();
+  }
+);
 
 watch(mobileMenuOpen, (open) => {
   if (open) {
