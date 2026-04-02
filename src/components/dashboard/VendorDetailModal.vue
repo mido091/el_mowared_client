@@ -1,7 +1,7 @@
 <template>
   <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
     <!-- Backdrop -->
-    <div class="absolute inset-0 bg-background/80 backdrop-blur-sm" @click="close"></div>
+    <div class="absolute inset-0 bg-background/45 backdrop-blur-[1px]" @click="close"></div>
 
     <!-- Modal Content -->
     <div class="relative w-full max-w-2xl bg-card border border-border rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">

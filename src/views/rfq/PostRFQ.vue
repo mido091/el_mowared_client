@@ -65,6 +65,7 @@
                 :placeholder="labels.selectCategory"
                 :sheet-title="labels.categoryLabel"
                 :sheet-kicker="labels.mainCategoryTitle"
+                mobile-behavior="inline"
                 searchable
               />
 
@@ -485,6 +486,7 @@ async function submitForm() {
     }
 
     await rfqStore.createRfq(payload);
+    await rfqStore.fetchPublicRfqs({ mode: 'fresh', silent: true });
     notificationStore.success(labels.value.submitSuccess);
     router.push('/profile?tab=rfqs');
   } catch (error) {

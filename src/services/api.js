@@ -22,6 +22,13 @@ axiosRetry(api, {
 
 api.interceptors.request.use(
   (config) => {
+    const method = String(config.method || '').toLowerCase();
+    const sendsJsonBody = ['post', 'put', 'patch'].includes(method);
+
+    if (sendsJsonBody && config.data === null) {
+      config.data = undefined;
+    }
+
     logger.debug(`API ${config.method?.toUpperCase()} ${config.url}`, {
       hasParams: !!config.params,
       hasBody: !!config.data

@@ -169,6 +169,34 @@ export const useRfqStore = defineStore('rfq', {
       }
     },
 
+    async completeRfq(id) {
+      this.ensureSync();
+      this.submitting = true;
+      this.error = null;
+      this.fieldErrors = {};
+      try {
+        const response = await api.patch(`/rfq/${id}/complete`, {}, { errorMode: 'inline' });
+        this.rfqs = this.rfqs.map((item) =>
+          Number(item.id) === Number(id) ? { ...item, status: 'COMPLETED' } : item
+        );
+        if (this.feed[id]) {
+          this.feed = {
+            ...this.feed,
+            [id]: { ...this.feed[id], status: 'COMPLETED' }
+          };
+        }
+        this.invalidateRfqs('complete-rfq');
+        return getApiData(response);
+      } catch (err) {
+        const normalized = normalizeError(err);
+        this.error = normalized.message;
+        this.fieldErrors = normalized.fields;
+        throw err;
+      } finally {
+        this.submitting = false;
+      }
+    },
+
     async requestQuote(payload) {
       this.ensureSync();
       this.submitting = true;
@@ -380,7 +408,7 @@ export const useRfqStore = defineStore('rfq', {
       this.error = null;
       this.fieldErrors = {};
       try {
-        const response = await api.patch(`/rfq/${id}/decline`, null, { errorMode: 'inline' });
+        const response = await api.patch(`/rfq/${id}/decline`, {}, { errorMode: 'silent' });
         if (this.feed[id]) {
           this.feed[id] = {
             ...this.feed[id],
@@ -394,6 +422,9 @@ export const useRfqStore = defineStore('rfq', {
         const normalized = normalizeError(err);
         this.error = normalized.message;
         this.fieldErrors = normalized.fields;
+        if ([400, 404].includes(Number(normalized.status || 0))) {
+          await this.fetchFeed({ mode: 'fresh', silent: true }).catch(() => {});
+        }
         throw err;
       } finally {
         this.submitting = false;

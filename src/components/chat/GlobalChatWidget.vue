@@ -117,7 +117,7 @@
             class="text-[11px] font-black uppercase tracking-[0.18em] text-rose-600 hover:text-rose-500 transition-colors"
             @click="endConversation"
           >
-            {{ locale === 'ar' ? 'إنهاء المحادثة' : 'End Conversation' }}
+            {{ locale === 'ar' ? 'انهاء و حذف المحادثه' : 'End & Delete Conversation' }}
           </button>
         </div>
 

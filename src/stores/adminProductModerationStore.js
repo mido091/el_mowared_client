@@ -286,5 +286,25 @@ export const useAdminProductModerationStore = defineStore('adminProductModeratio
         throw error;
       }
     },
+
+    async deleteRejectedProduct(productId) {
+      const previousProducts = [...this.products];
+      const previousSummary = [...this.summaryProducts];
+      const previousDetails = { ...this.productDetails };
+
+      this.products = this.products.filter((product) => Number(product.id) !== Number(productId));
+      this.summaryProducts = this.summaryProducts.filter((product) => Number(product.id) !== Number(productId));
+      delete this.productDetails[productId];
+
+      try {
+        await api.delete(`/admin/products/${productId}`);
+        this.invalidateProducts('admin-delete-product');
+      } catch (error) {
+        this.products = previousProducts;
+        this.summaryProducts = previousSummary;
+        this.productDetails = previousDetails;
+        throw error;
+      }
+    },
   },
 });

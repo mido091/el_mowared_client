@@ -367,6 +367,7 @@
             :placeholder="t('common.role')"
             :sheet-title="t('common.role')"
             :sheet-kicker="locale === 'ar' ? 'إدارة المستخدمين' : 'User management'"
+            mobile-behavior="inline"
           />
         </div>
       </div>
@@ -489,7 +490,6 @@ const userStats = computed(() => [
 const columns = [
   { key: 'full_name',  label: t('common.fullName') },
   { key: 'role',       label: t('common.role') },
-  { key: 'record_state', label: t('common.status') },
   { key: 'status',     label: t('common.status') },
   { key: 'created_at', label: t('common.joinedAt') },
   { key: 'actions',    label: '', class: 'w-20' }

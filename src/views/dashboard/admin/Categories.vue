@@ -29,19 +29,34 @@
     <!-- Categories Table -->
     <DataTable
       :columns="columns"
-      :items="categoryStore.adminCategories"
+      :items="orderedAdminCategories"
       :loading="categoryStore.loading"
       mobile-title-key="name"
     >
       <template #cell-name="{ item }">
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4" :class="item.parent_id ? 'ps-6 sm:ps-8' : ''">
+          <div v-if="item.parent_id" class="hidden sm:flex items-center text-muted-foreground/35 -me-1">
+            <CornerDownRight class="w-4 h-4" />
+          </div>
           <div class="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-secondary border border-border/40 transition-colors group-hover:bg-secondary/10">
             <component :is="getIcon(item.icon)" class="w-5 h-5" />
           </div>
           <div>
-            <p class="font-bold text-foreground">
-              {{ locale === 'ar' ? (item.name_ar || item.nameAr) : (item.name_en || item.nameEn) }}
-            </p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="font-bold text-foreground">
+                {{ locale === 'ar' ? (item.name_ar || item.nameAr) : (item.name_en || item.nameEn) }}
+              </p>
+              <span
+                :class="[
+                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-black tracking-widest uppercase',
+                  item.parent_id
+                    ? 'border-secondary/15 bg-secondary/5 text-secondary'
+                    : 'border-primary/15 bg-primary/5 text-primary'
+                ]"
+              >
+                {{ item.parent_id ? (locale === 'ar' ? 'فرعي' : 'Child') : (locale === 'ar' ? 'رئيسي' : 'Root') }}
+              </span>
+            </div>
             <p class="text-[10px] text-muted-foreground font-black tracking-widest uppercase">
               /{{ item.slug }}
             </p>
@@ -130,6 +145,7 @@
             :placeholder="t('admin.parentCategory')"
             :sheet-title="t('admin.parentCategory')"
             :sheet-kicker="locale === 'ar' ? 'الفلاتر' : 'Filters'"
+            mobile-behavior="inline"
             searchable
           />
           <ResponsiveSelect
@@ -139,6 +155,7 @@
             :placeholder="t('admin.icon')"
             :sheet-title="t('admin.icon')"
             :sheet-kicker="locale === 'ar' ? 'اختر' : 'Select'"
+            mobile-behavior="inline"
             searchable
           />
         </div>
@@ -200,8 +217,43 @@ const columns = [
   { key: 'actions', label: '', class: 'w-24' }
 ];
 
+const localizedCategoryName = (category) => (
+  locale.value === 'ar'
+    ? (category?.name_ar || category?.nameAr || category?.name || '')
+    : (category?.name_en || category?.nameEn || category?.name || '')
+);
+
+const sortCategoriesByName = (items = []) => [...items].sort((a, b) =>
+  localizedCategoryName(a).localeCompare(localizedCategoryName(b), locale.value === 'ar' ? 'ar' : 'en', { sensitivity: 'base' })
+);
+
+const orderedAdminCategories = computed(() => {
+  const categories = Array.isArray(categoryStore.adminCategories) ? categoryStore.adminCategories : [];
+  const roots = sortCategoriesByName(categories.filter((category) => !category.parent_id));
+  const childrenByParent = new Map();
+
+  categories
+    .filter((category) => category.parent_id)
+    .forEach((category) => {
+      const parentId = category.parent_id;
+      const siblings = childrenByParent.get(parentId) || [];
+      siblings.push(category);
+      childrenByParent.set(parentId, siblings);
+    });
+
+  const ordered = [];
+  const appendBranch = (category, depth = 0) => {
+    ordered.push({ ...category, __depth: depth });
+    const children = sortCategoriesByName(childrenByParent.get(category.id) || []);
+    children.forEach((child) => appendBranch(child, depth + 1));
+  };
+
+  roots.forEach((root) => appendBranch(root, 0));
+  return ordered;
+});
+
 const parentOptions = computed(() => {
-  return categoryStore.adminCategories.filter(c => c.id !== editingId.value && !c.parent_id);
+  return orderedAdminCategories.value.filter(c => c.id !== editingId.value && !c.parent_id);
 });
 
 const parentCategoryOptions = computed(() => [

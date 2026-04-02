@@ -348,9 +348,10 @@
                     </label>
                     <input
                       v-model="link.url"
-                      type="url"
+                      :type="link.platform === 'whatsapp' ? 'text' : 'url'"
                       class="form-input"
-                      :placeholder="ownerCopy.socialUrlPlaceholder"
+                      :dir="link.platform === 'whatsapp' ? 'ltr' : undefined"
+                      :placeholder="getSocialUrlPlaceholder(link.platform)"
                     />
                   </div>
 
@@ -476,6 +477,7 @@ const ownerCopy = computed(() =>
         choosePlatform: 'اختر المنصة',
         socialUrl: 'الرابط',
         socialUrlPlaceholder: 'https://example.com/your-page',
+        socialWhatsappPlaceholder: '01xxxxxxxxx أو https://wa.me/201...',
         noSocialLinks: 'لا توجد روابط تواصل اجتماعي محفوظة بعد',
         noSocialLinksDesc: 'أضف أول رابط ليظهر في الفوتر بشكل تلقائي.',
         invalidSocialLink: 'يرجى اختيار المنصة وإدخال رابط صحيح يبدأ بـ http أو https.'
@@ -493,6 +495,7 @@ const ownerCopy = computed(() =>
         choosePlatform: 'Choose platform',
         socialUrl: 'URL',
         socialUrlPlaceholder: 'https://example.com/your-page',
+        socialWhatsappPlaceholder: '01xxxxxxxxx or https://wa.me/201...',
         noSocialLinks: 'No social links saved yet',
         noSocialLinksDesc: 'Add your first social link to make it appear in the footer.',
         invalidSocialLink: 'Please choose a platform and enter a valid URL starting with http or https.'
@@ -543,7 +546,7 @@ const socialPlatformOptions = [
   { value: 'x/twitter', label: 'X / Twitter', icon: Twitter, hint: 'x.com/... or twitter.com/...' },
   { value: 'youtube', label: 'YouTube', icon: Youtube, hint: 'youtube.com/@channel' },
   { value: 'tiktok', label: 'TikTok', icon: Music2, hint: 'tiktok.com/@username' },
-  { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, hint: 'wa.me/201...' },
+  { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare, hint: '01xxxxxxxxx or wa.me/201...' },
   { value: 'telegram', label: 'Telegram', icon: Send, hint: 't.me/username' }
 ];
 
@@ -649,9 +652,31 @@ const normalizeSocialLinks = () =>
   form.socialLinks
     .map((item) => ({
       platform: String(item.platform || '').trim(),
-      url: String(item.url || '').trim()
+      url: normalizeSocialUrl(String(item.platform || '').trim(), String(item.url || '').trim())
     }))
     .filter((item) => item.platform || item.url);
+
+const getSocialUrlPlaceholder = (platform) =>
+  platform === 'whatsapp'
+    ? (ownerCopy.value.socialWhatsappPlaceholder || ownerCopy.value.socialUrlPlaceholder)
+    : ownerCopy.value.socialUrlPlaceholder;
+
+const normalizeSocialUrl = (platform, value) => {
+  const normalizedPlatform = String(platform || '').trim().toLowerCase();
+  const rawValue = String(value || '').trim();
+  if (!rawValue) return '';
+
+  if (normalizedPlatform !== 'whatsapp') {
+    return rawValue;
+  }
+
+  if (/^https?:\/\//i.test(rawValue)) {
+    return rawValue;
+  }
+
+  const digits = rawValue.replace(/\D/g, '');
+  return digits ? `https://wa.me/${digits}` : rawValue;
+};
 
 const isValidUrl = (value) => {
   try {
@@ -660,6 +685,16 @@ const isValidUrl = (value) => {
   } catch {
     return false;
   }
+};
+
+const isValidSocialLink = (item) => {
+  if (!item.platform || !item.url) return false;
+
+  if (item.platform === 'whatsapp') {
+    return isValidUrl(item.url) || /\d{6,}/.test(String(item.url).replace(/\D/g, ''));
+  }
+
+  return isValidUrl(item.url);
 };
 
 const handleFile = (e, type) => {
@@ -674,9 +709,7 @@ const saveAll = async () => {
   try {
     const socialLinks = normalizeSocialLinks();
 
-    const invalidSocialLink = socialLinks.find(
-      (item) => !item.platform || !item.url || !isValidUrl(item.url)
-    );
+    const invalidSocialLink = socialLinks.find((item) => !isValidSocialLink(item));
 
     if (invalidSocialLink) {
       uiStore.showToast(ownerCopy.value.invalidSocialLink, 'error');

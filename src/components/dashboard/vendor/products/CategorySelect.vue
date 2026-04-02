@@ -6,6 +6,7 @@
     :placeholder="placeholderText"
     :sheet-title="labelText"
     :sheet-kicker="labelText"
+    mobile-behavior="inline"
     searchable
     @update:model-value="handleUpdate"
   />

@@ -8,15 +8,25 @@
         <p class="max-w-3xl text-sm leading-7 text-muted-foreground">
           {{
             isArabic
-              ? 'يعرض هذا المركز جميع محادثات المستخدمين مع الدعم أو الموردين من الأحدث إلى الأقدم. يمكنك مراجعة المحادثة كاملة، وأرشفة المحادثات المهمة، ومتابعة المحادثات التي ستحذف تلقائيًا بعد 7 أيام إذا لم تُؤرشف.'
+              ? 'يعرض هذا المركز جميع محادثات المستخدمين مع الدعم أو الموردين من الأحدث إلى الأقدم. يمكنك مراجعة المحادثة كاملة، وأرشفة المحادثات المهمة، ومتابعة المحادثات التي ستحذف تلقائيًا بعد 7 أيام إذا لم يتم الاحتفاظ بها.'
               : 'This center lists all user conversations with support or suppliers from newest to oldest. Review the full chat, archive important conversations, and monitor the ones that will be deleted automatically after 7 days if they remain unarchived.'
           }}
         </p>
       </div>
 
-      <button class="btn-outline btn-sm" @click="fetchConversations">
-        {{ isArabic ? 'تحديث' : 'Refresh' }}
-      </button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          class="btn-outline btn-sm border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10"
+          :disabled="loading || actionLoading || !conversations.length"
+          @click="deleteAllConversations"
+        >
+          <Trash2 class="h-4 w-4" />
+          <span>{{ isArabic ? 'حذف الكل' : 'Delete All' }}</span>
+        </button>
+        <button class="btn-outline btn-sm" :disabled="loading" @click="fetchConversations">
+          {{ isArabic ? 'تحديث' : 'Refresh' }}
+        </button>
+      </div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-3">
@@ -75,17 +85,13 @@
               </td>
               <td class="px-5 py-4">
                 <div class="space-y-1">
-                  <p class="font-bold text-foreground">
-                    {{ getUserName(conversation) }}
-                  </p>
+                  <p class="font-bold text-foreground">{{ getUserName(conversation) }}</p>
                   <p class="text-xs text-muted-foreground">{{ conversation.user_email || (isArabic ? 'بدون بريد' : 'No email') }}</p>
                 </div>
               </td>
               <td class="px-5 py-4">
                 <div class="space-y-1">
-                  <p class="font-bold text-foreground">
-                    {{ getAgentName(conversation) }}
-                  </p>
+                  <p class="font-bold text-foreground">{{ getAgentName(conversation) }}</p>
                   <p class="text-xs text-muted-foreground">
                     {{ Number(conversation.admin_id) ? (isArabic ? 'تم الرد' : 'Responded') : (isArabic ? 'بانتظار الرد' : 'Waiting for reply') }}
                   </p>
@@ -461,6 +467,39 @@ async function deleteConversation(id) {
     await fetchCounts();
   } catch {
     notificationStore.error(isArabic.value ? 'فشل حذف المحادثة.' : 'Failed to delete conversation.');
+  } finally {
+    actionLoading.value = false;
+  }
+}
+
+async function deleteAllConversations() {
+  if (!conversations.value.length) return;
+
+  const activeTabLabel = tabs.value.find((tab) => tab.key === activeTab.value)?.label || activeTab.value;
+  const confirmed = await notificationStore.openDialog({
+    title: isArabic.value ? 'تأكيد الحذف الجماعي' : 'Confirm Bulk Delete',
+    message: isArabic.value
+      ? `سيتم حذف جميع المحادثات الظاهرة داخل تبويب "${activeTabLabel}" نهائيًا. هل تريد المتابعة؟`
+      : `All conversations listed in the "${activeTabLabel}" tab will be deleted permanently. Do you want to continue?`,
+    type: 'confirm',
+    confirmText: isArabic.value ? 'حذف الكل' : 'Delete All',
+    cancelText: isArabic.value ? 'إلغاء' : 'Cancel'
+  });
+  if (!confirmed) return;
+
+  actionLoading.value = true;
+  try {
+    await api.delete(`/admin/support-archives?scope=${activeTab.value}`);
+    conversations.value = [];
+    if (detailsOpen.value) {
+      detailsOpen.value = false;
+      selectedConversation.value = null;
+      selectedMessages.value = [];
+    }
+    await fetchCounts();
+    notificationStore.success(isArabic.value ? 'تم حذف جميع المحادثات الظاهرة نهائيًا.' : 'All visible conversations were deleted permanently.');
+  } catch {
+    notificationStore.error(isArabic.value ? 'فشل حذف جميع المحادثات.' : 'Failed to delete all conversations.');
   } finally {
     actionLoading.value = false;
   }

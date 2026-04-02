@@ -161,11 +161,19 @@
                   {{ locale === 'ar' ? 'اعتماد' : 'Approve' }}
                 </button>
                 <button
-                  v-if="effectiveRecordState(product) !== 'DELETED'"
+                  v-if="canShowRejectAction(product)"
                   class="flex-1 rounded-2xl bg-rose-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-rose-600 transition hover:bg-rose-100"
                   @click.stop="startReject(product)"
                 >
                   {{ locale === 'ar' ? (isApproved(product) ? 'إيقاف وتعليق' : 'رفض') : (isApproved(product) ? 'Deactivate' : 'Reject') }}
+                </button>
+                <button
+                  v-if="canDeleteRejectedProduct(product)"
+                  class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white transition hover:bg-slate-800"
+                  @click.stop="deleteRejectedProductFromCard(product)"
+                  :title="locale === 'ar' ? 'حذف المنتج نهائيًا' : 'Delete product'"
+                >
+                  <Trash2 class="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -364,14 +372,14 @@
                   {{ locale === 'ar' ? 'إلغاء' : 'Cancel' }}
                 </button>
                 <button
-                  v-if="!showRejectForm"
+                  v-if="!showRejectForm && canShowRejectAction(selectedProduct)"
                   class="rounded-2xl bg-rose-50 px-5 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-rose-600 transition hover:bg-rose-100"
                   @click="showRejectForm = true"
                 >
                   {{ locale === 'ar' ? (isApproved(selectedProduct) ? 'إيقاف وتعليق' : 'رفض') : (isApproved(selectedProduct) ? 'Deactivate' : 'Reject') }}
                 </button>
                 <button
-                  v-else
+                  v-else-if="showRejectForm && canShowRejectAction(selectedProduct)"
                   class="rounded-2xl bg-rose-500 px-5 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-rose-600 disabled:opacity-40"
                   :disabled="!rejectReason.trim() || submitting"
                   @click="submitReview('rejected')"
@@ -389,6 +397,15 @@
                 >
                   <span v-if="!submitting">{{ locale === 'ar' ? 'اعتماد المنتج' : 'Approve product' }}</span>
                   <span v-else>{{ locale === 'ar' ? 'جارٍ الحفظ...' : 'Saving...' }}</span>
+                </button>
+                <button
+                  v-if="canDeleteRejectedProduct(selectedProduct)"
+                  class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:opacity-50"
+                  :disabled="submitting"
+                  @click="deleteRejectedProduct"
+                >
+                  <Trash2 class="h-4 w-4" />
+                  <span>{{ locale === 'ar' ? 'حذف المنتج نهائيًا' : 'Delete product' }}</span>
                 </button>
               </div>
             </div>
@@ -408,6 +425,7 @@ import {
   ChevronDown,
   PanelRightOpen,
   Shield,
+  Trash2,
   User,
   X,
 } from 'lucide-vue-next';
@@ -535,6 +553,11 @@ const effectiveRecordState = (product) => `${product?.record_state || product?.l
 const isApproved = (product) => {
   return effectiveRecordState(product) === 'APPROVED';
 };
+const canShowRejectAction = (product) => {
+  const state = effectiveRecordState(product);
+  return state !== 'DELETED' && state !== 'REJECTED';
+};
+const canDeleteRejectedProduct = (product) => effectiveRecordState(product) === 'REJECTED';
 
 const isVendorExpanded = (key) => expandedVendors.value.has(key);
 
@@ -588,6 +611,65 @@ const startReject = async (product) => {
 const cancelReject = () => {
   showRejectForm.value = false;
   rejectReason.value = '';
+};
+
+const deleteRejectedProduct = async () => {
+  if (!selectedProduct.value || !canDeleteRejectedProduct(selectedProduct.value)) return;
+
+  const confirmed = await notificationStore.confirm(
+    locale.value === 'ar'
+      ? 'سيتم حذف المنتج المرفوض نهائيًا ولن تتمكن من استعادته. هل تريد المتابعة؟'
+      : 'This rejected product will be deleted permanently and cannot be restored. Continue?',
+    locale.value === 'ar' ? 'تأكيد الحذف' : 'Confirm deletion'
+  );
+
+  if (!confirmed) return;
+
+  submitting.value = true;
+  try {
+    await moderationStore.deleteRejectedProduct(selectedProduct.value.id);
+    uiStore.showToast(
+      locale.value === 'ar' ? 'تم حذف المنتج المرفوض بالكامل.' : 'Rejected product deleted successfully.',
+      'success'
+    );
+    closePreview();
+  } catch (error) {
+    notificationStore.error(
+      normalizeError(error).message ||
+      (locale.value === 'ar' ? 'فشل حذف المنتج.' : 'Failed to delete product.')
+    );
+  } finally {
+    submitting.value = false;
+  }
+};
+
+const deleteRejectedProductFromCard = async (product) => {
+  if (!product || !canDeleteRejectedProduct(product)) return;
+
+  const confirmed = await notificationStore.confirm(
+    locale.value === 'ar'
+      ? 'سيتم حذف المنتج المرفوض نهائيًا ولن تتمكن من استعادته. هل تريد المتابعة؟'
+      : 'This rejected product will be deleted permanently and cannot be restored. Continue?',
+    locale.value === 'ar' ? 'تأكيد الحذف' : 'Confirm deletion'
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await moderationStore.deleteRejectedProduct(product.id);
+    uiStore.showToast(
+      locale.value === 'ar' ? 'تم حذف المنتج المرفوض بالكامل.' : 'Rejected product deleted successfully.',
+      'success'
+    );
+    if (Number(selectedProduct.value?.id) === Number(product.id)) {
+      closePreview();
+    }
+  } catch (error) {
+    notificationStore.error(
+      normalizeError(error).message ||
+      (locale.value === 'ar' ? 'فشل حذف المنتج.' : 'Failed to delete product.')
+    );
+  }
 };
 
 const submitReview = async (status) => {

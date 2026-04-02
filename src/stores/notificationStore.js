@@ -19,30 +19,33 @@ let dialogId = 0;
 const currentLocale = () => localStorage.getItem('locale') || document.documentElement.lang || 'en';
 const localize = (ar, en) => (currentLocale().startsWith('ar') ? ar : en);
 
-const normalizeIncomingNotification = (notification = {}) => ({
-  id: notification.id || Date.now() + Math.random(),
-  read: Boolean(notification.is_read ?? notification.read ?? false),
-  timestamp: notification.created_at || notification.timestamp || new Date().toISOString(),
-  titleAr: notification.titleAr || notification.title_ar || '',
-  titleEn: notification.titleEn || notification.title_en || '',
-  contentAr: notification.contentAr || notification.content_ar || '',
-  contentEn: notification.contentEn || notification.content_en || '',
-  message: notification.message
-    || notification.content
-    || notification.contentEn
-    || notification.content_en
-    || notification.contentAr
-    || notification.content_ar
-    || notification.title
-    || notification.titleEn
-    || notification.title_en
-    || notification.titleAr
-    || notification.title_ar
-    || '',
-  type: notification.type || 'info',
-  link: notification.link || '',
-  notificationType: notification.notificationType || notification.type || '',
-});
+const normalizeIncomingNotification = (notification = {}) => {
+  const titleAr = notification.titleAr || notification.title_ar || '';
+  const titleEn = notification.titleEn || notification.title_en || '';
+  const contentAr = notification.contentAr || notification.content_ar || '';
+  const contentEn = notification.contentEn || notification.content_en || '';
+  const messageAr = notification.messageAr || contentAr || titleAr || '';
+  const messageEn = notification.messageEn || contentEn || titleEn || '';
+  const message = currentLocale().startsWith('ar')
+    ? (messageAr || messageEn || notification.message || notification.content || notification.title || '')
+    : (messageEn || messageAr || notification.message || notification.content || notification.title || '');
+
+  return {
+    id: notification.id || Date.now() + Math.random(),
+    read: Boolean(notification.is_read ?? notification.read ?? false),
+    timestamp: notification.created_at || notification.timestamp || new Date().toISOString(),
+    titleAr,
+    titleEn,
+    contentAr,
+    contentEn,
+    messageAr,
+    messageEn,
+    message,
+    type: notification.type || 'info',
+    link: notification.link || '',
+    notificationType: notification.notificationType || notification.type || '',
+  };
+};
 
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
@@ -305,7 +308,9 @@ export const useNotificationStore = defineStore('notifications', {
       });
 
       socketService.on('new_rfq', async (data) => {
-        const msg = data?.message || data?.messageEn || localize('يوجد طلب عروض جديد مناسب لك', 'New RFQ matching your categories!');
+        const msg = currentLocale().startsWith('ar')
+          ? (data?.messageAr || data?.message || data?.messageEn || localize('يوجد طلب عروض جديد مناسب لك', 'New RFQ matching your categories!'))
+          : (data?.messageEn || data?.message || data?.messageAr || localize('يوجد طلب عروض جديد مناسب لك', 'New RFQ matching your categories!'));
         await this.handleRealtimeNotification({
           ...data,
           message: msg,
@@ -464,7 +469,7 @@ export const useNotificationStore = defineStore('notifications', {
 
       if (/^\d+$/.test(String(id))) {
         try {
-          await api.patch(`/notifications/${id}/read`, null, {
+          await api.patch(`/notifications/${id}/read`, {}, {
             errorMode: 'silent',
             redirectOn401: false,
           });
@@ -481,10 +486,57 @@ export const useNotificationStore = defineStore('notifications', {
         notification.read = true;
       });
       this.unreadCount = 0;
-      api.patch('/notifications/read-all', null, {
+      api.patch('/notifications/read-all', {}, {
         errorMode: 'silent',
         redirectOn401: false,
       }).catch(() => {});
+    },
+
+    async deleteNotification(id) {
+      const normalizedId = String(id);
+      const existing = this.notifications.find((item) => String(item.id) === normalizedId);
+      if (!existing) return;
+
+      this.notifications = this.notifications.filter((item) => String(item.id) !== normalizedId);
+      if (!existing.read) {
+        this.unreadCount = Math.max(0, this.unreadCount - 1);
+      }
+
+      if (/^\d+$/.test(normalizedId)) {
+        try {
+          await api.delete(`/notifications/${normalizedId}`, {
+            errorMode: 'silent',
+            redirectOn401: false,
+          });
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.warn('[notifications] delete failed', error);
+          }
+          await this.fetchNotifications().catch(() => {});
+        }
+      }
+    },
+
+    async deleteAllNotifications() {
+      const previousNotifications = [...this.notifications];
+      const previousUnreadCount = this.unreadCount;
+
+      this.notifications = [];
+      this.unreadCount = 0;
+
+      try {
+        await api.delete('/notifications', {
+          errorMode: 'silent',
+          redirectOn401: false,
+        });
+      } catch (error) {
+        this.notifications = previousNotifications;
+        this.unreadCount = previousUnreadCount;
+        if (import.meta.env.DEV) {
+          console.warn('[notifications] delete all failed', error);
+        }
+        await this.fetchNotifications().catch(() => {});
+      }
     },
 
     disconnect() {

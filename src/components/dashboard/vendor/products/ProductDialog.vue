@@ -25,22 +25,22 @@
       </Transition>
 
       <!-- Wizard Header / Tab Navigation -->
-      <div class="bg-secondary p-4 lg:px-12 flex items-center justify-between border-b border-white/5 relative z-20 shadow-xl shadow-secondary/20">
-        <div class="flex items-center gap-2 lg:gap-8 overflow-x-auto no-scrollbar py-2">
+      <div class="bg-secondary px-4 py-3 lg:px-10 flex items-center justify-between border-b border-white/5 relative z-20 shadow-xl shadow-secondary/20">
+        <div class="flex items-center gap-2 lg:gap-6 overflow-x-auto no-scrollbar py-1.5">
           <button 
             v-for="tab in wizardTabs" 
             :key="tab.id"
             @click="goToTab(tab.id)"
             :disabled="!canGoToTab(tab.id)"
             :class="[
-              'flex items-center gap-3 px-5 py-3 rounded-2xl transition-all whitespace-nowrap border-2',
+              'flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition-all whitespace-nowrap border-2',
               currentTab === tab.id 
                 ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105' 
                 : 'bg-white/5 border-transparent text-white/40 hover:bg-white/10 hover:text-white/60 disabled:opacity-30 disabled:cursor-not-allowed'
             ]"
           >
-            <component :is="tab.icon" class="w-4 h-4" />
-            <span class="text-[10px] font-black uppercase tracking-widest hidden sm:inline">{{ t(tab.label) }}</span>
+            <component :is="tab.icon" class="w-3.5 h-3.5" />
+            <span class="text-[9px] font-black uppercase tracking-[0.2em] hidden sm:inline">{{ t(tab.label) }}</span>
           </button>
         </div>
         <div class="hidden lg:flex flex-col items-end">
@@ -64,9 +64,9 @@
                 {{ errorText }}
               </div>
               <div class="bg-white border border-slate-100 rounded-[2.5rem] p-8 lg:p-12 space-y-10 shadow-premium">
-                <div class="flex items-center gap-5">
-                  <div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
-                    <Box class="w-6 h-6" />
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
+                    <Box class="w-5 h-5" />
                   </div>
                   <div>
                     <h3 class="text-xs font-black uppercase tracking-[0.3em] text-slate-400 mb-1">{{ t('common.general') }}</h3>
@@ -83,14 +83,14 @@
                           <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-focus-within/field:text-primary transition-colors">
                             {{ t('products.name') }} (AR) <span class="text-primary">*</span>
                           </span>
-                          <span class="text-[8px] font-black bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-100">ARABIC</span>
+                          <span class="text-[7px] font-black bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-full border border-emerald-100">ARABIC</span>
                         </label>
                         <input 
                           v-model="form.name_ar" 
                           dir="rtl"
                           required
                           @input="handleFieldInput('name_ar')"
-                          class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-bold text-secondary placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none"
+                          class="w-full h-14 bg-slate-50/50 border border-slate-100 rounded-[1.1rem] px-5 text-sm font-bold text-secondary placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none"
                         />
                         <p v-if="fieldMessage('name_ar')" class="text-[10px] text-rose-500 font-black mt-2 px-1">
                           {{ fieldMessage('name_ar') }}
@@ -106,13 +106,13 @@
                           <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest group-focus-within/field:text-primary transition-colors">
                             {{ t('products.name') }} (EN) <span class="text-slate-300 font-normal ml-1">(Optional)</span>
                           </span>
-                          <span class="text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">ENGLISH</span>
+                          <span class="text-[7px] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full border border-blue-100">ENGLISH</span>
                         </label>
                         <input 
                           v-model="form.name_en" 
                           dir="ltr"
                           @input="handleFieldInput('name_en')"
-                          class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-bold text-secondary placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none"
+                          class="w-full h-14 bg-slate-50/50 border border-slate-100 rounded-[1.1rem] px-5 text-sm font-bold text-secondary placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none"
                         />
                         <p v-if="fieldMessage('name_en')" class="text-[10px] text-rose-500 font-black mt-2 px-1">
                           {{ fieldMessage('name_en') }}
@@ -127,7 +127,7 @@
                         {{ locale === 'ar' ? 'رقم الموديل' : 'Model No.' }}
                         <span class="text-slate-300 font-normal ml-1">({{ locale === 'ar' ? 'اختياري' : 'Optional' }})</span>
                       </span>
-                      <span class="text-[8px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200">
+                      <span class="text-[7px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full border border-slate-200">
                         {{ locale === 'ar' ? 'LTR' : 'SKU' }}
                       </span>
                     </label>
@@ -137,7 +137,7 @@
                       inputmode="text"
                       @input="handleFieldInput('model_number', 'modelNumber')"
                       :placeholder="locale === 'ar' ? 'مثال: AX-9000 / MDL-220' : 'Example: AX-9000 / MDL-220'"
-                      class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-bold text-secondary placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none"
+                      class="w-full h-14 bg-slate-50/50 border border-slate-100 rounded-[1.1rem] px-5 text-sm font-bold text-secondary placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none"
                     />
                     <p class="text-[10px] font-medium text-slate-400 px-1">
                       {{ locale === 'ar' ? 'يساعد المشترين على العثور على المنتج والبحث عنه بدقة أكبر.' : 'Helps buyers discover and search for the exact product faster.' }}
@@ -190,7 +190,7 @@
                           rows="6" 
                           required
                           @input="handleFieldInput('description_ar')"
-                          class="w-full bg-slate-50/50 border border-slate-100 rounded-[1.5rem] p-6 text-sm font-medium leading-relaxed text-slate-600 placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none resize-none"
+                          class="w-full bg-slate-50/50 border border-slate-100 rounded-[1.25rem] p-5 text-sm font-medium leading-relaxed text-slate-600 placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none resize-none"
                         ></textarea>
                         <p v-if="fieldMessage('description_ar')" class="text-[10px] text-rose-500 font-black mt-2 px-1">
                           {{ fieldMessage('description_ar') }}
@@ -212,7 +212,7 @@
                           dir="ltr"
                           rows="6" 
                           @input="handleFieldInput('description_en')"
-                          class="w-full bg-slate-50/50 border border-slate-100 rounded-[1.5rem] p-6 text-sm font-medium leading-relaxed text-slate-600 placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none resize-none"
+                          class="w-full bg-slate-50/50 border border-slate-100 rounded-[1.25rem] p-5 text-sm font-medium leading-relaxed text-slate-600 placeholder:text-slate-300 focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none resize-none"
                         ></textarea>
                         <p v-if="fieldMessage('description_en')" class="text-[10px] text-rose-500 font-black mt-2 px-1">
                           {{ fieldMessage('description_en') }}
@@ -229,9 +229,9 @@
           <div v-else-if="currentTab === 'pricing'" key="pricing" class="absolute inset-0 overflow-y-auto p-6 lg:p-12 custom-scrollbar">
             <div class="max-w-4xl mx-auto space-y-10">
               <div class="bg-white border border-slate-100 rounded-[2.5rem] p-8 lg:p-12 space-y-10 shadow-premium">
-                <div class="flex items-center gap-5">
-                  <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-500/5">
-                    <Coins class="w-6 h-6" />
+                <div class="flex items-center gap-4">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shadow-sm border border-emerald-500/5">
+                    <Coins class="w-5 h-5" />
                   </div>
                   <div>
                     <h3 class="text-xs font-black uppercase tracking-[0.3em] text-slate-400 mb-1">{{ t('products.pricingWholesale') }}</h3>
@@ -259,7 +259,7 @@
                         step="0.01" 
                         required 
                         @input="handleFieldInput('price')"
-                        class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
+                        class="w-full h-14 bg-slate-50/50 border border-slate-100 rounded-[1.1rem] px-5 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
                       />
                     </div>
                     <p v-if="fieldMessage('price')" class="text-[10px] text-rose-500 font-black px-1">
@@ -282,7 +282,7 @@
                         type="number" 
                         step="0.01" 
                         @input="handleFieldInput('discount_price', 'discountPrice')"
-                        class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
+                        class="w-full h-14 bg-slate-50/50 border border-slate-100 rounded-[1.1rem] px-5 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
                       />
                     </div>
                     <p v-if="fieldMessage('discount_price', 'discountPrice')" class="text-[10px] text-rose-500 font-black px-1">
@@ -297,9 +297,9 @@
                         type="number" 
                         required 
                         @input="handleFieldInput('min_order_quantity', 'minOrderQuantity')"
-                        class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
+                        class="w-full h-14 bg-slate-50/50 border border-slate-100 rounded-[1.1rem] px-5 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
                       />
-                      <span :class="['absolute top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase tracking-widest', locale === 'ar' ? 'left-5' : 'right-5']">PCS</span>
+                      <span :class="['absolute top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase tracking-widest', locale === 'ar' ? 'left-4' : 'right-4']">PCS</span>
                     </div>
                     <p v-if="fieldMessage('min_order_quantity', 'minOrderQuantity')" class="text-[10px] text-rose-500 font-black px-1">
                       {{ fieldMessage('min_order_quantity', 'minOrderQuantity') }}
@@ -319,9 +319,9 @@
                         min="0"
                         required 
                         @input="handleFieldInput('quantity_available', 'quantityAvailable')"
-                        class="w-full h-16 bg-slate-50/50 border border-slate-100 rounded-[1.25rem] px-6 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
+                        class="w-full h-14 bg-slate-50/50 border border-slate-100 rounded-[1.1rem] px-5 text-sm font-black text-secondary focus:ring-4 focus:ring-primary/5 focus:border-primary focus:bg-white transition-all outline-none" 
                       />
-                      <span :class="['absolute top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase tracking-widest', locale === 'ar' ? 'left-5' : 'right-5']">{{ locale === 'ar' ? 'وحدة' : 'Units' }}</span>
+                      <span :class="['absolute top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300 uppercase tracking-widest', locale === 'ar' ? 'left-4' : 'right-4']">{{ locale === 'ar' ? 'وحدة' : 'Units' }}</span>
                     </div>
                     <p v-if="fieldMessage('quantity_available', 'quantityAvailable')" class="text-[10px] text-rose-500 font-black px-1">
                       {{ fieldMessage('quantity_available', 'quantityAvailable') }}

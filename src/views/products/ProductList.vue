@@ -1,6 +1,6 @@
 <template>
   <div class="container-wide space-y-6 py-8 font-plex" :dir="locale === 'ar' ? 'rtl' : 'ltr'">
-    <section class="rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.45)] backdrop-blur sm:p-6 dark:border-slate-800 dark:bg-slate-950/90">
+    <section class="relative z-20 rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.45)] backdrop-blur sm:p-6 dark:border-slate-800 dark:bg-slate-950/90">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0 space-y-2">
           <p class="ui-kicker text-[hsl(var(--primary))]">{{ sectionLabel }}</p>
@@ -155,7 +155,7 @@
       </div>
     </section>
 
-    <main class="min-w-0">
+    <main class="relative z-0 min-w-0">
       <div v-if="loading" :class="gridView ? 'grid items-start grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6' : 'space-y-4'">
         <div v-for="i in gridView ? 9 : 6" :key="i" class="skeleton rounded-[1.75rem]" :class="gridView ? 'h-96' : 'h-36'" />
       </div>

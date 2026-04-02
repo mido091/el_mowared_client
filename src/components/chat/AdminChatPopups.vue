@@ -158,7 +158,7 @@
               </button>
               <div class="flex items-center gap-3">
                 <button class="text-rose-600 transition-colors hover:text-rose-500" @click="endConversation(popup.id)">
-                  {{ locale === 'ar' ? 'إنهاء المحادثة' : 'End Conversation' }}
+                  {{ locale === 'ar' ? 'انهاء و حذف المحادثه' : 'End & Delete Conversation' }}
                 </button>
                 <button class="text-slate-500 transition-colors hover:text-rose-600" @click="deleteConversation(popup.id)">
                   {{ locale === 'ar' ? 'حذف الرسائل' : 'Delete Messages' }}

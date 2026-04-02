@@ -32,6 +32,7 @@
             :placeholder="labels.allCategories"
             :sheet-title="labels.allCategories"
             :sheet-kicker="locale === 'ar' ? 'فلاتر الفرص' : 'Lead filters'"
+            mobile-behavior="inline"
             searchable
           />
         </div>
@@ -190,6 +191,7 @@ const activeTab = ref('available');
 const search = ref('');
 const selectedParentCategoryId = ref(0);
 const vendorProfileId = ref(null);
+const vendorCategories = ref([]);
 
 const localized = (ar, en) => (locale.value === 'ar' ? ar : en);
 
@@ -230,18 +232,36 @@ const labels = computed(() => ({
 }));
 
 const categories = computed(() => categoryStore.localizedCategories(locale.value));
-const { rootCategories, getChildren } = useCategoryHierarchy(categories, locale);
+const { getChildren, getCategoryById, getCategoryPathLabel } = useCategoryHierarchy(categories, locale);
+const vendorCategoryOptions = computed(() => {
+  const seen = new Set();
+
+  return (vendorCategories.value || [])
+    .map((category) => {
+      const id = Number(category?.id);
+      if (!Number.isFinite(id) || seen.has(id)) return null;
+      seen.add(id);
+
+      const normalized = getCategoryById(id) || category;
+      const fallbackLabel = locale.value === 'ar'
+        ? (category?.name_ar || category?.name || category?.name_en || '')
+        : (category?.name_en || category?.name || category?.name_ar || '');
+
+      return {
+        value: id,
+        label: getCategoryPathLabel(id) || fallbackLabel,
+        description: normalized?.slug ? `/${normalized.slug}` : '',
+      };
+    })
+    .filter(Boolean);
+});
 const parentCategoryOptions = computed(() => [
   {
     value: 0,
     label: labels.value.allCategories,
     description: locale.value === 'ar' ? 'كل التخصصات المرتبطة بك' : 'All categories relevant to your profile',
   },
-  ...rootCategories.value.map((category) => ({
-    value: Number(category.id),
-    label: category.label,
-    description: category.slug ? `/${category.slug}` : '',
-  })),
+  ...vendorCategoryOptions.value,
 ]);
 const tabLabels = computed(() => ({
   incomplete: locale.value === 'ar' ? 'غير مكتمل' : 'Incomplete',
@@ -390,9 +410,12 @@ async function declineLead(lead) {
 async function loadVendorProfileId() {
   try {
     const response = await api.get('/vendor/me');
-    vendorProfileId.value = getApiData(response)?.vendor?.id || null;
+    const vendor = getApiData(response)?.vendor || null;
+    vendorProfileId.value = vendor?.id || null;
+    vendorCategories.value = Array.isArray(vendor?.categories) ? vendor.categories : [];
   } catch {
     vendorProfileId.value = null;
+    vendorCategories.value = [];
   }
 }
 

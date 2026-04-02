@@ -170,13 +170,6 @@
         
         <div v-if="canEndConversation || canDeleteConversation" class="flex items-center gap-2">
           <button
-            v-if="canEndConversation"
-            @click="endActiveConversation"
-            class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-black text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
-          >
-            {{ t('chat.endConversation') || 'End Conversation' }}
-          </button>
-          <button
             v-if="canDeleteConversation"
             @click="deleteActiveConversation"
             class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-[11px] font-black text-slate-500 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-rose-500/20 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
@@ -184,6 +177,13 @@
           >
             <Trash2 class="h-[18px] w-[18px]" />
             <span>{{ t('chat.deleteConversation') || 'Delete Messages' }}</span>
+          </button>
+          <button
+            v-else-if="canEndConversation"
+            @click="endActiveConversation"
+            class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-black text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
+          >
+            {{ t('chat.endConversation') || 'End Conversation' }}
           </button>
         </div>
       </div>

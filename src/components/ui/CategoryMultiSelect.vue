@@ -73,13 +73,25 @@
                 :key="category.id"
                 type="button"
                 class="mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-start text-sm font-bold transition-all last:mb-0"
-                :class="activeParentId === category.id ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'"
+                :class="[
+                  activeParentId === category.id ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60',
+                  props.rootOnly && isSelected(category.id) ? 'ring-1 ring-secondary/30 bg-secondary/10 text-secondary' : ''
+                ]"
                 @click.stop="activateParent(category.id)"
               >
                 <span class="truncate">{{ category.label }}</span>
-                <span class="text-[11px] text-muted-foreground">
-                  {{ props.rootOnly ? '' : (getChildren(category.id).length || '') }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] text-muted-foreground">
+                    {{ props.rootOnly ? '' : (getChildren(category.id).length || '') }}
+                  </span>
+                  <div
+                    v-if="props.rootOnly"
+                    class="flex h-5 w-5 items-center justify-center rounded-full border transition"
+                    :class="isSelected(category.id) ? 'border-secondary bg-secondary text-white' : 'border-border bg-card text-transparent'"
+                  >
+                    <Check class="h-3 w-3" />
+                  </div>
+                </div>
               </button>
             </div>
           </div>
@@ -224,20 +236,34 @@ const activateParent = (parentId) => {
   activeParentId.value = normalizedParentId;
 
   if (props.rootOnly) {
-    const nextValue = isSelected(normalizedParentId) ? [] : [normalizedParentId];
+    const nextValue = [...normalizedModelValue.value];
+    const index = nextValue.indexOf(normalizedParentId);
+
+    if (index === -1) {
+      nextValue.push(normalizedParentId);
+    } else {
+      nextValue.splice(index, 1);
+    }
+
     emit('update:modelValue', nextValue);
     emit('change', nextValue);
-    isOpen.value = false;
   }
 };
 
 const toggleCategory = (id) => {
   const normalizedId = Number(id);
   if (props.rootOnly) {
-    const nextValue = isSelected(normalizedId) ? [] : [normalizedId];
+    const nextValue = [...normalizedModelValue.value];
+    const index = nextValue.indexOf(normalizedId);
+
+    if (index === -1) {
+      nextValue.push(normalizedId);
+    } else {
+      nextValue.splice(index, 1);
+    }
+
     emit('update:modelValue', nextValue);
     emit('change', nextValue);
-    isOpen.value = false;
     return;
   }
 

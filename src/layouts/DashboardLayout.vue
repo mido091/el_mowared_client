@@ -178,6 +178,14 @@
             <button v-if="notificationStore.unreadCount > 0" @click="notificationStore.markAllAsRead()" class="text-[10px] font-black text-secondary hover:text-secondary/70 uppercase tracking-widest transition-colors">
               {{ t('common.markAllRead', 'Mark all read') }}
             </button>
+            <button
+              v-if="notificationStore.notifications.length > 0"
+              @click="notificationStore.deleteAllNotifications()"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
+              :title="locale === 'ar' ? 'حذف جميع الإشعارات' : 'Delete all notifications'"
+            >
+              <Trash2 class="h-4 w-4" />
+            </button>
             <button @click="notifOpen = false" class="p-2 hover:bg-muted rounded-lg transition-colors">
               <ChevronRight :class="['w-4 h-4', locale === 'ar' ? '' : 'rotate-180']" />
             </button>
@@ -204,6 +212,14 @@
               <p class="text-xs font-semibold text-foreground truncate">{{ n.message }}</p>
               <p class="text-[10px] text-muted-foreground">{{ new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</p>
             </div>
+            <button
+              type="button"
+              @click.stop="notificationStore.deleteNotification(n.id)"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-300"
+              :title="locale === 'ar' ? 'حذف الإشعار' : 'Delete notification'"
+            >
+              <Trash2 class="h-4 w-4" />
+            </button>
             <div v-if="!n.read" class="w-2 h-2 rounded-full bg-secondary shrink-0 mt-2"></div>
           </div>
         </div>
@@ -255,10 +271,10 @@ import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { 
   Package, LayoutDashboard, ShoppingBag, FileText, 
-  MessageSquare, Users, ShieldCheck, Settings,
+              MessageSquare, Users, ShieldCheck, Settings,
   Wallet, Menu, Bell, Sun, Moon, Languages,
   ChevronRight, UserCircle, TrendingUp,
-  Sparkles, Layers, Radio, X, FileQuestion, Zap, BarChart3, LayoutGrid, Star
+  Sparkles, Layers, Radio, X, FileQuestion, Zap, BarChart3, LayoutGrid, Star, Trash2
 } from 'lucide-vue-next';
 import { usePermission }       from '@/composables/usePermission';
 import { useAuthStore }        from '@/stores/auth';

@@ -46,6 +46,7 @@
                 v-model="selectedCategoryIds"
                 :label="labels.selectorLabel"
                 :placeholder="labels.selectorPlaceholder"
+                root-only
               />
             </div>
           </div>

@@ -55,7 +55,7 @@ class SocketService {
         return true;
       }
 
-      if (Number(this.userId || 0) === Number(requestedUserId || 0)) {
+      if (!this.userId || Number(this.userId || 0) === Number(requestedUserId || 0)) {
         this.token = token || null;
         this.userId = requestedUserId;
         this.userRole = requestedRole;
@@ -115,8 +115,10 @@ class SocketService {
 
     this.pusher.connection.bind('connected', () => {
       console.info('[Pusher] Connected');
-      this.syncPresence('online');
-      this.startPresenceHeartbeat();
+      if (this.hasAuthenticatedContext) {
+        this.syncPresence('online');
+        this.startPresenceHeartbeat();
+      }
     });
 
     this.pusher.connection.bind('disconnected', () => {
@@ -563,6 +565,8 @@ class SocketService {
   }
 
   async syncPresence(state = 'online') {
+    if (!this.hasAuthenticatedContext) return;
+
     try {
       await api.post('/realtime/presence', { state }, { errorMode: 'silent', redirectOn401: false });
     } catch (error) {
@@ -574,6 +578,10 @@ class SocketService {
 
   get isConnected() {
     return this.pusher?.connection?.state === 'connected';
+  }
+
+  get hasAuthenticatedContext() {
+    return Boolean(this.token && this.userId);
   }
 }
 

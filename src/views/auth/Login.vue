@@ -58,9 +58,21 @@
       </div>
 
       <!-- Error -->
-      <div v-if="authStore.error" class="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
-        <AlertCircle class="w-4 h-4 shrink-0" />
-        {{ resolveLocalizedText(authStore.error, locale) }}
+      <div v-if="authStore.error" class="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-2">
+        <AlertCircle class="mt-0.5 w-4 h-4 shrink-0" />
+        <div class="space-y-2">
+          <p>{{ displayAuthError }}</p>
+          <a
+            v-if="authStore.errorCode === 'ACCOUNT_INACTIVE' && whatsappHref"
+            :href="whatsappHref"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center rounded-lg border border-destructive/20 bg-white/60 px-3 py-1.5 text-xs font-semibold text-destructive transition hover:bg-white/90 dark:bg-background/40 dark:hover:bg-background/70"
+            dir="ltr"
+          >
+            WhatsApp: {{ whatsappDisplay }}
+          </a>
+        </div>
       </div>
 
       <!-- Reset Success Message -->
@@ -100,11 +112,12 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
+import { useSettingsStore } from '@/stores/settings';
 import { clearFieldError, getFieldErrorMessage, mapClientValidationIssues } from '@/utils/errorHandler';
 import { resolveLocalizedText } from '@/utils/localizedText';
 
@@ -114,6 +127,7 @@ const { t, locale } = useI18n();
 const router = useRouter();
 const route  = useRoute();
 const authStore = useAuthStore();
+const settingsStore = useSettingsStore();
 
 const showPass = ref(false);
 const form = reactive({ email: '', password: '' });
@@ -121,6 +135,41 @@ const errors = ref({});
 
 const fieldMessage = (field) => getFieldErrorMessage(errors.value, field, locale.value)
   || getFieldErrorMessage(authStore.fieldErrors, field, locale.value);
+
+const whatsappEntry = computed(() =>
+  (settingsStore.socialLinks || []).find((entry) => /whatsapp/i.test(`${entry?.platform || ''}`))
+);
+
+const whatsappDisplay = computed(() => {
+  const rawValue = `${whatsappEntry.value?.url || ''}`.trim();
+  if (!rawValue) return '';
+  const digits = rawValue.replace(/[^\d+]/g, '');
+  return digits || rawValue;
+});
+
+const whatsappHref = computed(() => {
+  const rawValue = `${whatsappEntry.value?.url || ''}`.trim();
+  if (!rawValue) return '';
+  if (/^https?:\/\//i.test(rawValue)) return rawValue;
+  const digitsOnly = rawValue.replace(/\D/g, '');
+  return digitsOnly ? `https://wa.me/${digitsOnly}` : '';
+});
+
+const displayAuthError = computed(() => {
+  if (authStore.errorCode === 'ACCOUNT_INACTIVE') {
+    if (locale.value === 'ar') {
+      return whatsappDisplay.value
+        ? `حسابك غير مفعل. يرجى التواصل مع إدارة الموقع لمعرفة سبب الإيقاف. رقم واتساب الإدارة: ${whatsappDisplay.value}`
+        : 'حسابك غير مفعل. يرجى التواصل مع إدارة الموقع لمعرفة سبب الإيقاف.';
+    }
+
+    return whatsappDisplay.value
+      ? `Your account is inactive. Please contact site administration to learn the reason for suspension. WhatsApp: ${whatsappDisplay.value}`
+      : 'Your account is inactive. Please contact site administration to learn the reason for suspension.';
+  }
+
+  return resolveLocalizedText(authStore.error, locale.value);
+});
 
 const clearError = (field) => {
   clearFieldError(errors.value, field);
@@ -145,4 +194,8 @@ const handleLogin = async () => {
     // Error handled in store
   }
 };
+
+onMounted(() => {
+  settingsStore.fetch();
+});
 </script>

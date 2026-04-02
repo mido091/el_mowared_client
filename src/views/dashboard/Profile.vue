@@ -170,6 +170,14 @@
                     {{ isArabic ? 'عرض تفاصيل الطلب' : 'View RFQ Details' }}
                   </router-link>
                   <button
+                    v-if="canCompleteRfq(rfq)"
+                    @click="markBuyerRfqCompleted(rfq)"
+                    :disabled="loading || completeRfqLoading"
+                    class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-3 text-sm font-bold text-emerald-600 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {{ isArabic ? 'تمت الصفقة' : 'Mark Deal Complete' }}
+                  </button>
+                  <button
                     v-if="canDeleteRfq(rfq)"
                     @click="openDeleteConfirm(rfq)"
                     :disabled="loading || deleteRfqLoading"
@@ -387,6 +395,7 @@ const buyerRfqsLoading = ref(false);
 const deleteConfirmOpen = ref(false);
 const pendingDeleteRfq = ref(null);
 const deleteRfqLoading = ref(false);
+const completeRfqLoading = ref(false);
 const buyerRfqFilter = ref('incomplete');
 const isBuyer = computed(() => authStore.user?.role === 'user');
 const isArabic = computed(() => locale.value === 'ar');
@@ -470,7 +479,7 @@ const loadBuyerRfqs = async () => {
   if (!isBuyer.value) return;
   buyerRfqsLoading.value = true;
   try {
-    await rfqStore.fetchPublicRfqs({ mode: 'revalidate' });
+    await rfqStore.fetchPublicRfqs({ mode: 'fresh', silent: true });
     buyerRfqs.value = [...rfqStore.rfqs];
   } finally {
     buyerRfqsLoading.value = false;
@@ -502,6 +511,12 @@ onMounted(async () => {
 watch(() => route.query.tab, (tab) => {
   if (typeof tab === 'string' && tab) {
     activeTab.value = tab;
+  }
+});
+
+watch(activeTab, async (tab) => {
+  if (tab === 'rfqs' && isBuyer.value) {
+    await loadBuyerRfqs();
   }
 });
 
@@ -634,6 +649,11 @@ const canDeleteRfq = (rfq) => {
   return !['ACCEPTED', 'COMPLETED'].includes(status) && offersCount === 0;
 };
 
+const canCompleteRfq = (rfq) => {
+  const status = `${rfq?.status || ''}`.toUpperCase();
+  return ['BROADCASTED', 'OPEN', 'NEGOTIATING', 'OFFERED', 'ACCEPTED'].includes(status);
+};
+
 const openDeleteConfirm = (rfq) => {
   pendingDeleteRfq.value = rfq;
   deleteConfirmOpen.value = true;
@@ -662,6 +682,27 @@ const confirmDeleteBuyerRfq = async () => {
     );
   } finally {
     deleteRfqLoading.value = false;
+  }
+};
+
+const markBuyerRfqCompleted = async (rfq) => {
+  if (!rfq?.id) return;
+
+  completeRfqLoading.value = true;
+  try {
+    await rfqStore.completeRfq(rfq.id);
+    await loadBuyerRfqs();
+    uiStore.showToast(
+      isArabic.value ? 'تم تحويل الطلب إلى مكتمل بنجاح' : 'RFQ marked as completed successfully',
+      'success'
+    );
+  } catch (err) {
+    uiStore.showToast(
+      err?.response?.data?.message || (isArabic.value ? 'تعذر تحديث حالة الطلب حاليًا.' : 'Unable to complete the RFQ right now.'),
+      'error'
+    );
+  } finally {
+    completeRfqLoading.value = false;
   }
 };
 

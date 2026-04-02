@@ -14,6 +14,7 @@ export const useAuthStore = defineStore('auth', {
       token: localStorage.getItem('token') || null,
       loading: false,
       error: null,
+      errorCode: null,
       fieldErrors: {},
       success: false,
     };
@@ -36,6 +37,7 @@ export const useAuthStore = defineStore('auth', {
     async login(credentials) {
       this.loading = true;
       this.error = null;
+      this.errorCode = null;
       this.fieldErrors = {};
       try {
         const response = await api.post('/auth/login', credentials, { errorMode: 'inline', redirectOn401: false });
@@ -45,6 +47,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
+        this.errorCode = normalized.code || null;
         this.fieldErrors = normalized.fields;
         throw err;
       } finally {
@@ -55,6 +58,7 @@ export const useAuthStore = defineStore('auth', {
     async registerUser(userData) {
       this.loading = true;
       this.error = null;
+      this.errorCode = null;
       this.fieldErrors = {};
       try {
         const response = await api.post('/auth/register/user', userData, { errorMode: 'inline' });
@@ -62,6 +66,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
+        this.errorCode = normalized.code || null;
         this.fieldErrors = normalized.fields;
         throw err;
       } finally {
@@ -72,6 +77,7 @@ export const useAuthStore = defineStore('auth', {
     async registerMowared(vendorData) {
       this.loading = true;
       this.error = null;
+      this.errorCode = null;
       this.fieldErrors = {};
       try {
         const response = await api.post('/auth/register/mowared', vendorData, { errorMode: 'inline' });
@@ -79,6 +85,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
+        this.errorCode = normalized.code || null;
         this.fieldErrors = normalized.fields;
         throw err;
       } finally {
@@ -93,6 +100,7 @@ export const useAuthStore = defineStore('auth', {
     async verifyRegistrationOtp(email, otp) {
       this.loading = true;
       this.error = null;
+      this.errorCode = null;
       this.fieldErrors = {};
       try {
         const response = await api.post('/auth/otp/verify-registration', { email, otp }, { errorMode: 'inline' });
@@ -106,6 +114,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
+        this.errorCode = normalized.code || null;
         this.fieldErrors = normalized.fields;
         throw err;
       } finally {
@@ -116,6 +125,7 @@ export const useAuthStore = defineStore('auth', {
     async verifyVendorOtp(email, otp) {
       this.loading = true;
       this.error = null;
+      this.errorCode = null;
       this.fieldErrors = {};
       try {
         const response = await api.post('/auth/otp/verify-vendor', { email, otp }, { errorMode: 'inline' });
@@ -123,6 +133,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
+        this.errorCode = normalized.code || null;
         this.fieldErrors = normalized.fields;
         throw err;
       } finally {
@@ -142,6 +153,7 @@ export const useAuthStore = defineStore('auth', {
     async forgotPassword(email) {
       this.loading = true;
       this.error = null;
+      this.errorCode = null;
       this.fieldErrors = {};
       try {
         const response = await api.post('/auth/otp/forgot-password', { email }, { errorMode: 'inline' });
@@ -149,6 +161,7 @@ export const useAuthStore = defineStore('auth', {
       } catch (err) {
         const normalized = normalizeError(err);
         this.error = normalized.message;
+        this.errorCode = normalized.code || null;
         this.fieldErrors = normalized.fields;
         throw err;
       } finally {
