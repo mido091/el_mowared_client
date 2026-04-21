@@ -17,6 +17,14 @@
 </template>
 
 <script setup>
+/**
+ * @file DashCard.vue
+ * @description Foundational UI container for dashboard widgets.
+ *
+ * Provides a standardized CSS layout, borders, and slot structures (header, default, footer)
+ * to ensure all dashboard panels maintain vertical rhythm and visual consistency.
+ */
+
 defineProps({
   title: String,
   noPadding: Boolean

@@ -5,6 +5,8 @@ import i18n from './locales';
 import App from './App.vue';
 import './style.css';
 
+// The entry file only wires global plugins. Feature initialization happens inside App.vue
+// so route-aware services and stores are created after the app context exists.
 const app = createApp(App);
 const pinia = createPinia();
 

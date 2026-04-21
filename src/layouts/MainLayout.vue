@@ -13,6 +13,8 @@
 </template>
 
 <script setup>
+// MainLayout wraps the public-facing marketplace pages.
+// Shared marketing/catalog chrome lives here so individual pages only focus on page content.
 import { defineAsyncComponent } from 'vue';
 import Header from '@/components/ui/Header.vue';
 import Breadcrumbs from '@/components/ui/Breadcrumbs.vue';

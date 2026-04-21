@@ -129,6 +129,7 @@ const vClickOutside = {
 .scale-fade-enter-active, .scale-fade-leave-active {
   transition: all 0.2s ease-out;
 }
+.scale-fade-leave-active { pointer-events: none; }
 .scale-fade-enter-from, .scale-fade-leave-to {
   opacity: 0;
   transform: scale(0.95) translateY(-10px);

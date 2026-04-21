@@ -189,6 +189,19 @@
 </template>
 
 <script setup>
+/**
+ * @file AdminChatPopups.vue
+ * @description Floating UI manager for admin support agents. Operates independently
+ * of the global layout to persist active chat windows across page navigations.
+ *
+ * Capabilities:
+ *  - Displays a queue of incoming, unassigned support requests.
+ *  - Manages up to 3 concurrent "popup" chat windows simultaneously.
+ *  - Directly binds to Pusher events (`new_message`, `support_assigned`) to auto-open
+ *    popups when an admin receives a message or is automatically routed a new chat.
+ *  - Retrieves canned responses from `quickRepliesStore`.
+ */
+
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Loader2, Send, X } from 'lucide-vue-next';

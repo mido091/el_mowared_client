@@ -6,6 +6,16 @@ import { useAuthStore } from '@/stores/auth';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { normalizeError } from '@/utils/errorHandler';
 
+/**
+ * @file chat.js
+ * @description Pinia store for managing real-time chat conversations, messages, and presence.
+ * Handles B2B supplier inquiries as well as Admin Support flows.
+ *
+ * Responsibilities:
+ *  - Maintains an organized list of conversations (`activeConversation`, `supportRequests`).
+ *  - Interacts with Pusher via `socket.service.js` to process incoming payloads.
+ *  - Tracks and computes "typing" states, unread counts, and support availability in real-time.
+ */
 export const useChatStore = defineStore('chat', {
   state: () => ({
     conversations: [],
@@ -103,6 +113,10 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    /**
+     * Ensures conversations are loaded exactly once unless forced.
+     * Useful for layout initializations without redundant API calls.
+     */
     async ensureConversationsLoaded(force = false) {
       if (force || !this.conversations.length) {
         await this.fetchConversations();
@@ -188,6 +202,16 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    /**
+     * Initializes a new chat or resumes an existing one based on the context.
+     * Emits typing stop immediately upon starting to clear UI stale state.
+     *
+     * @param {number|null} vendorId 
+     * @param {number|null} productId
+     * @param {string} messageText
+     * @param {string} type - 'INQUIRY', 'SUPPORT', 'RFQ'
+     * @returns {Promise<Object>} The server response containing the conversation and message.
+     */
     async startChat(vendorId, productId, messageText, type = 'INQUIRY', metadata = null, extra = {}) {
       this.sending = true;
       this.error = null;
@@ -367,6 +391,14 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    /**
+     * Appends an incoming (or locally echoed) message to the state without re-fetching.
+     * Triggers read receipts implicitly if the conversation is actively open.
+     * Updates the parent conversation's `unread_count` properly based on sender.
+     *
+     * @param {Object} payload 
+     * @param {boolean} isLocalEcho - True if the message was sent by the current application instance.
+     */
     appendMessage(payload, isLocalEcho = false) {
       const msg = payload?.message || payload;
       const conversationId = Number(msg?.conversation_id || payload?.conversationId);
@@ -443,6 +475,10 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    /**
+     * Subscribes to Pusher WebSockets to hydrate the Vue store.
+     * Prevents duplicate bindings by maintaining a flag `listenersInitialized`.
+     */
     initListeners() {
       if (this.listenersInitialized) return;
       this.listenersInitialized = true;

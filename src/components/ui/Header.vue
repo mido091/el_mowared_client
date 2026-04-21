@@ -291,7 +291,8 @@
 
     <div
       v-if="mobileMenuOpen"
-      class="app-backdrop layer-backdrop top-[7.5rem] md:hidden"
+      class="fixed inset-x-0 bottom-0 layer-backdrop md:hidden bg-slate-900/40"
+      style="top: 7.5rem;"
       @click="mobileMenuOpen = false"
     ></div>
 
@@ -760,6 +761,7 @@ onBeforeUnmount(() => {
 
 .search-pop-leave-active {
   transition: all 0.12s ease-in;
+  pointer-events: none;
 }
 
 .search-pop-enter-from,

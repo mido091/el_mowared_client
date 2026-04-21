@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
+  <div class="min-w-0 space-y-6 overflow-x-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-3xl font-black text-foreground uppercase tracking-tighter">{{ t('admin.vendors', 'Vendor Network') }}</h1>
@@ -8,7 +8,7 @@
     </div>
 
     <!-- Filter Tabs -->
-    <div class="flex gap-1 bg-muted/50 p-1 rounded-2xl w-fit border border-border/50 backdrop-blur-sm">
+    <div class="flex max-w-full gap-1 overflow-x-auto bg-muted/50 p-1 rounded-2xl border border-border/50 backdrop-blur-sm">
       <button 
         v-for="status in ['ALL', 'PENDING', 'APPROVED', 'REJECTED']" :key="status" 
         @click="activeStatus = status"
@@ -44,38 +44,23 @@
       <template #cell-status="{ item }">
         <div :class="[
           'inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
-          item.verification_status === 'APPROVED' ? 'bg-green-500/10 text-green-600 border border-green-500/20' : 
-          item.verification_status === 'REJECTED' ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
-          'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+          vendorStatusBadgeClass(item)
         ]">
-          <span class="w-1.5 h-1.5 rounded-full me-2" :class="item.verification_status === 'APPROVED' ? 'bg-green-600' : item.verification_status === 'REJECTED' ? 'bg-red-600' : 'bg-amber-600'"></span>
-          {{ t('admin.' + item.verification_status.toLowerCase()) }}
-        </div>
-      </template>
-      <template #cell-record_state="{ item }">
-        <div :class="[
-          'inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
-          item.record_state === 'DELETED'
-            ? 'bg-slate-500/10 text-slate-600 border border-slate-500/20'
-            : item.record_state === 'INACTIVE'
-              ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-              : 'bg-primary/10 text-primary border border-primary/20'
-        ]">
-          <span class="w-1.5 h-1.5 rounded-full me-2" :class="item.record_state === 'DELETED' ? 'bg-slate-500' : item.record_state === 'INACTIVE' ? 'bg-amber-600' : 'bg-primary'"></span>
-          {{ recordStateLabel(item) }}
+          <span class="w-1.5 h-1.5 rounded-full me-2" :class="vendorStatusDotClass(item)"></span>
+          {{ vendorStatusLabel(item) }}
         </div>
       </template>
       <template #cell-actions="{ item }">
-         <div class="flex gap-2 justify-end">
-            <button @click="openVendor(item)" class="btn-ghost btn-xs !rounded-xl flex items-center hover:bg-primary/5 hover:text-primary transition-all group">
+         <div class="flex flex-wrap gap-2 justify-end">
+            <button @click="openVendor(item)" class="btn-ghost btn-xs !rounded-xl flex items-center justify-center hover:bg-primary/5 hover:text-primary transition-all group">
               <Eye class="w-3.5 h-3.5 me-1.5 opacity-50 group-hover:opacity-100" /> 
               <span class="text-[10px] font-black uppercase tracking-widest">{{ t('common.review') }}</span>
             </button>
-            <button v-if="item.verification_status === 'PENDING' && item.record_state !== 'DELETED'" @click="toggleVerify(item.id, true)" class="btn-success btn-xs !rounded-xl flex items-center shadow-sm hover:shadow-md transition-all">
+            <button v-if="item.verification_status === 'PENDING' && item.record_state !== 'DELETED'" @click="toggleVerify(item.id, true)" class="btn-success btn-xs !rounded-xl flex items-center justify-center shadow-sm hover:shadow-md transition-all">
               <Check class="w-3.5 h-3.5 me-1.5" /> 
               <span class="text-[10px] font-black uppercase tracking-widest">{{ t('common.approve') }}</span>
             </button>
-            <button @click="confirmDeleteVendor(item)" class="btn-ghost btn-xs !rounded-xl flex items-center text-destructive hover:bg-destructive/5 transition-all">
+            <button @click="confirmDeleteVendor(item)" class="btn-ghost btn-xs !rounded-xl flex items-center justify-center text-destructive hover:bg-destructive/5 transition-all">
               <Trash2 class="w-3.5 h-3.5 me-1.5" />
               <span class="text-[10px] font-black uppercase tracking-widest">{{ item.record_state === 'DELETED' ? (locale === 'ar' ? 'حذف نهائي' : 'Purge') : t('common.delete', 'Delete') }}</span>
             </button>
@@ -120,7 +105,6 @@ const selectedVendor = ref({});
 
 const columns = [
   { key: 'company_name', label: t('vendor.companyName') },
-  { key: 'record_state', label: t('common.status') },
   { key: 'status', label: t('common.status') },
   { key: 'actions', label: '', class: 'w-48 text-end' }
 ];
@@ -133,6 +117,53 @@ const recordStateLabel = (item) => {
       return locale.value === 'ar' ? 'موقوف' : 'Inactive';
     default:
       return t(`admin.${String(item.verification_status || 'PENDING').toLowerCase()}`, item.verification_status || 'PENDING');
+  }
+};
+
+const vendorStatusLabel = (item) => {
+  switch (`${item.record_state || ''}`.toUpperCase()) {
+    case 'DELETED':
+      return t('common.deleted', 'Deleted');
+    case 'INACTIVE':
+      return locale.value === 'ar' ? 'موقوف' : 'Inactive';
+    default:
+      return t(`admin.${String(item.verification_status || 'PENDING').toLowerCase()}`, item.verification_status || 'PENDING');
+  }
+};
+
+const vendorStatusBadgeClass = (item) => {
+  switch (`${item.record_state || ''}`.toUpperCase()) {
+    case 'DELETED':
+      return 'bg-slate-500/10 text-slate-600 border border-slate-500/20';
+    case 'INACTIVE':
+      return 'bg-amber-500/10 text-amber-600 border border-amber-500/20';
+    default:
+      switch (`${item.verification_status || ''}`.toUpperCase()) {
+        case 'APPROVED':
+          return 'bg-green-500/10 text-green-600 border border-green-500/20';
+        case 'REJECTED':
+          return 'bg-red-500/10 text-red-600 border border-red-500/20';
+        default:
+          return 'bg-amber-500/10 text-amber-600 border border-amber-500/20';
+      }
+  }
+};
+
+const vendorStatusDotClass = (item) => {
+  switch (`${item.record_state || ''}`.toUpperCase()) {
+    case 'DELETED':
+      return 'bg-slate-500';
+    case 'INACTIVE':
+      return 'bg-amber-600';
+    default:
+      switch (`${item.verification_status || ''}`.toUpperCase()) {
+        case 'APPROVED':
+          return 'bg-green-600';
+        case 'REJECTED':
+          return 'bg-red-600';
+        default:
+          return 'bg-amber-600';
+      }
   }
 };
 

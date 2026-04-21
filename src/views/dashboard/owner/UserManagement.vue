@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
+  <div class="min-w-0 space-y-8 overflow-x-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
@@ -34,7 +34,7 @@
     <!-- Main Content -->
     <div class="bg-card border border-border rounded-3xl overflow-visible shadow-sm shadow-black/5">
       <!-- Controls Bar -->
-      <div class="p-6 border-b border-border bg-muted/20 flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-t-[calc(1.5rem-1px)]">
+      <div class="p-4 sm:p-6 border-b border-border bg-muted/20 flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-t-[calc(1.5rem-1px)]">
         <div class="flex min-w-0 items-center gap-4 flex-wrap">
           <!-- Batch Actions -->
           <Transition name="fade">
@@ -47,7 +47,7 @@
           </Transition>
 
           <!-- Tabs (Users vs Logs) -->
-          <div class="flex max-w-full gap-1 overflow-x-auto bg-background p-1 rounded-2xl border border-border/50 backdrop-blur-sm">
+          <div class="flex max-w-full flex-nowrap gap-1 overflow-x-auto bg-background p-1 rounded-2xl border border-border/50 backdrop-blur-sm">
             <button 
               @click="activeTab = 'users'"
               :class="[
@@ -94,7 +94,7 @@
           :items="filteredUsers" 
           :loading="loading" 
           :has-filters="true"
-          mobile-breakpoint="(max-width: 1279px)"
+          mobile-breakpoint="(max-width: 1023px)"
           mobile-title-key="full_name"
           mobile-actions-key="actions"
           v-model:selected="selectedIds"
@@ -109,9 +109,15 @@
                 </div>
                 <div class="flex flex-col">
                   <div class="flex items-center gap-2">
-                    <span class="font-bold text-foreground leading-tight text-sm">{{ item.first_name }} {{ item.last_name }}</span>
+                    <span class="font-bold text-foreground leading-tight text-sm">{{ displayName(item) }}</span>
                     <span v-if="item.role === 'OWNER'" class="px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 text-[8px] font-black uppercase tracking-tighter shadow-sm ring-1 ring-amber-500/20">Owner</span>
+                    <span v-else-if="item.role === 'MOWARED' && item.vendor_verification_status === 'APPROVED'" class="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 text-[8px] font-black uppercase tracking-tighter shadow-sm ring-1 ring-emerald-500/20">
+                      {{ locale === 'ar' ? 'مورد معتمد' : 'Verified vendor' }}
+                    </span>
                   </div>
+                  <span v-if="item.role === 'MOWARED' && personalName(item)" class="text-[9px] text-muted-foreground uppercase tracking-wider font-bold">
+                    {{ personalName(item) }}
+                  </span>
                   <span class="text-[9px] text-muted-foreground uppercase tracking-wider font-bold">{{ item.email }}</span>
                 </div>
              </div>
@@ -267,7 +273,7 @@
         <p class="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-black -mt-4 mb-6">{{ t('admin.actions.edit_subtitle') }}</p>
         
         <!-- Identity Section -->
-        <div class="flex items-center gap-6">
+        <div class="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
           <div class="relative group">
             <input 
               type="file" 
@@ -295,7 +301,7 @@
             </div>
           </div>
           <div v-if="editingUser" class="flex-1 space-y-4">
-             <div class="grid grid-cols-2 gap-4">
+             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                <BaseInput v-model="editingUser.first_name" :label="t('auth.firstName')" :placeholder="t('auth.firstNamePlaceholder')" />
                <BaseInput v-model="editingUser.last_name" :label="t('auth.lastName')" :placeholder="t('auth.lastNamePlaceholder')" />
              </div>
@@ -347,7 +353,7 @@
             <input type="file" ref="createFileInput" class="hidden" accept="image/*" @change="handleCreateImageUpload" />
           </div>
 
-          <div class="flex-1 grid grid-cols-2 gap-4">
+          <div class="flex-1 grid grid-cols-1 gap-4 sm:grid-cols-2">
              <BaseInput v-model="newUser.firstName" :label="t('auth.firstName')" placeholder="Amir" />
              <BaseInput v-model="newUser.lastName" :label="t('auth.lastName')" placeholder="Mahmoud" />
           </div>
@@ -503,6 +509,17 @@ const logColumns = [
 ];
 
 const formatDate = (d) => new Date(d).toLocaleDateString();
+const personalName = (user) => [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim();
+const displayName = (user) => {
+  if (`${user?.role || ''}`.toUpperCase() === 'MOWARED') {
+    const companyName = locale.value === 'ar'
+      ? (user?.company_name_ar || user?.company_name_en)
+      : (user?.company_name_en || user?.company_name_ar);
+    if (companyName) return companyName;
+  }
+
+  return personalName(user) || user?.email || '-';
+};
 const recordStateLabel = (user) => {
   switch (`${user.record_state || ''}`.toUpperCase()) {
     case 'DELETED':

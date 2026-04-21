@@ -142,7 +142,7 @@
         <div v-if="open && usesMobileSheet" class="fixed inset-0 layer-modal">
           <button
             type="button"
-            class="app-backdrop layer-backdrop"
+            class="absolute inset-0 w-full h-full bg-slate-900/40"
             aria-label="Close selector"
             @click="close"
           />

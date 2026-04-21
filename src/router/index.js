@@ -1,12 +1,36 @@
+/**
+ * @file router/index.js
+ * @description Vue Router configuration for the Elmowared SPA.
+ *
+ * Route metadata conventions:
+ *  - `layout`       – Which layout shell to wrap the view in (MainLayout | AuthLayout | DashboardLayout).
+ *  - `requiresAuth` – Redirects anonymous users to /login, preserving target path in `redirect` query.
+ *  - `guestOnly`    – Redirects authenticated users to their role dashboard (prevents /login double-visit).
+ *  - `requiresRole` – Exact role required (e.g. 'mowared', 'owner', 'admin').
+ *  - `allowedRoles` – Array of roles allowed (shared elevated-access routes like admin/owner).
+ *  - `breadcrumb`   – i18n key used by the layout breadcrumb component.
+ *
+ * Navigation guard logic (beforeEach):
+ *  1. Restore user from /auth/me if a token exists but in-memory user is null (page reload).
+ *  2. Redirect authenticated users away from guest-only pages (e.g. /login, /register).
+ *  3. Bounce anonymous users from protected routes to /login with redirect query param.
+ *  4. Redirect buyer (USER) dashboard routes to /profile (buyers have no traditional dashboard).
+ *  5. Enforce `allowedRoles` and `requiresRole` access guards with home-page fallback.
+ *  6. Resolve /dashboard to the role-appropriate home screen.
+ *
+ * All routes use lazy-loading (()=> import()) for code-splitting and faster initial load.
+ */
+
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
+// Route metadata drives layout selection, auth checks, and role-aware dashboard access.
 const routes = [
   // ── Public / Main ──────────────────────────────
   {
     path: '/',
     name: 'Home',
-    redirect: '/products',
+    component: () => import('@/views/Home.vue'),
     meta: { layout: 'MainLayout' }
   },
   {
@@ -361,8 +385,7 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
-  // 1. Ensure Auth is initialized (session restore)
-  // We only do this once on the very first route or if user data is missing but token exists
+  // Restore the user profile when the page reloads with a persisted token.
   if (authStore.token && !authStore.user) {
     try {
       await authStore.fetchMe();
@@ -381,17 +404,17 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: 'Home' });
   }
 
-  // 3. Auth required
+  // Protected routes bounce anonymous users to login and preserve the target path.
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return next({ name: 'Login', query: { redirect: to.fullPath } });
   }
 
-  // 3.5 Buyers use a consolidated profile surface instead of a dashboard shell
+  // Buyers use a profile-centric experience rather than the vendor/admin dashboard shell.
   if (to.path.startsWith('/dashboard') && authStore.user?.role?.toLowerCase() === 'user') {
     return next({ name: 'UserProfile', query: to.query });
   }
 
-  // 4. Role required (Strict check)
+  // `allowedRoles` is used for routes shared by multiple elevated roles.
   if (to.meta.allowedRoles) {
     const userRole = authStore.user?.role?.toLowerCase();
     const allowedRoles = to.meta.allowedRoles.map((role) => role.toLowerCase());
@@ -405,7 +428,7 @@ router.beforeEach(async (to, from, next) => {
     const userRole = authStore.user?.role?.toLowerCase();
     const requiredRole = to.meta.requiresRole;
 
-    // God mode: Owner/Admin can access everything listed under their management scope
+    // Owner/Admin are treated as elevated operators for management routes.
     const isPowerful = ['admin', 'owner'].includes(userRole);
 
     if (requiredRole === 'owner' && userRole !== 'owner') {
@@ -421,7 +444,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // 5. Smart /dashboard redirect
+  // Keep `/dashboard` as a friendly entry point that fans out to the correct role home.
   if (to.path === '/dashboard') {
     const role = authStore.user?.role;
     if (role === 'mowared') return next({ name: 'DashboardVendor' });

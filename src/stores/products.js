@@ -7,6 +7,8 @@ import { createDomainSync } from '@/utils/domainSync';
 
 const productSync = createDomainSync('products');
 
+// The product store mixes API fetching with lightweight cache invalidation so
+// marketplace pages stay responsive while still reacting to realtime product changes.
 export const useProductsStore = defineStore('products', {
   state: () => ({
     products: [],
@@ -26,6 +28,7 @@ export const useProductsStore = defineStore('products', {
 
       productSync.ensure();
       productSync.subscribe((payload = {}) => {
+        // Revisions prevent an older event from overwriting fresher local state after rapid updates.
         const incomingRevision = Number(payload.revision || 0);
         if (incomingRevision && incomingRevision <= Number(this.revision || 0)) return;
         this.revision = incomingRevision;
@@ -49,6 +52,7 @@ export const useProductsStore = defineStore('products', {
 
       if (cached) {
         this.products = cached.data;
+        // Return immediately for fresh cache entries but still background-refresh stale ones.
         if (!cached.isStale) return;
       }
 

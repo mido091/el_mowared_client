@@ -159,6 +159,18 @@
 </template>
 
 <script setup>
+/**
+ * @file GlobalChatWidget.vue
+ * @description Floating UI widget allowing any logged-in User/Vendor to initialize
+ * or resume a SUPPORT conversation. It integrates tightly with Pinia's `chatStore`
+ * for real-time messaging, presence polling, and UI state synchronization.
+ *
+ * Key features:
+ *  - Automatically pulls the active SUPPORT conversation via `chatStore.supportConversation`.
+ *  - Polls support availability/ETA while an agent hasn't yet joined (`refreshSupportAvailability`).
+ *  - Subscribes to Pusher events indirectly by activating the conversation in the store.
+ */
+
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';

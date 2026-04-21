@@ -9,6 +9,14 @@
 </template>
 
 <script setup>
+/**
+ * App.vue is the runtime shell for the whole SPA.
+ * It is responsible for:
+ * - selecting the active layout from route metadata
+ * - applying locale/RTL state to the document
+ * - bootstrapping global settings, notifications, chat listeners, and realtime sync
+ * - rendering cross-app UI such as toasts and the floating chat widget
+ */
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -40,6 +48,7 @@ const globalWidgetReady = ref(false);
 let cleanupRealtimeInit = null;
 let cleanupSettingsInit = null;
 const handleAppLogout = () => {
+  // Disconnect long-lived channels immediately so stale sessions stop receiving events.
   notificationStore.disconnect();
 };
 
@@ -69,6 +78,8 @@ const layout = computed(() => {
   return layouts[name] || layouts.MainLayout;
 });
 
+// The floating chat widget is intentionally hidden on admin/owner pages and the dedicated chat screen
+// to avoid duplicating the main messaging experience.
 const showGlobalChatWidget = computed(() => {
   const role = `${authStore.user?.role || ''}`.toLowerCase();
   return globalWidgetReady.value
@@ -100,6 +111,7 @@ onMounted(() => {
   }
 
   cleanupSettingsInit = whenBrowserIdle(() => {
+    // Branding/settings are non-blocking, so they are loaded lazily after first paint.
     settingsStore.fetch();
   }, 150);
 });
@@ -116,6 +128,8 @@ watch(
     }
 
     const initRealtime = () => {
+      // These listeners stay close to the authenticated session lifecycle, not route components,
+      // so they can survive navigation changes and keep notification state centralized.
       notificationStore.init();
       chatStore.initListeners();
       globalWidgetReady.value = true;

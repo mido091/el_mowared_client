@@ -82,6 +82,7 @@ onBeforeUnmount(() => window.removeEventListener('click', handleClickOutside));
 }
 .dropdown-pop-leave-active {
   transition: all 0.1s ease-in;
+  pointer-events: none;
 }
 .dropdown-pop-enter-from {
   opacity: 0;

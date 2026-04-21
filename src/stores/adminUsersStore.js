@@ -15,6 +15,7 @@ const normalizeUser = (user) => ({
   id: Number(user.id),
   vendor_profile_id: user.vendor_profile_id == null ? null : Number(user.vendor_profile_id),
   is_active: Boolean(Number(user.is_active ?? user.isActive ?? 0)),
+  vendor_verification_status: `${user.vendor_verification_status || ''}`.toUpperCase(),
   record_state: user.record_state || (user.deleted_at ? 'DELETED' : (Boolean(Number(user.is_active ?? 0)) ? 'ACTIVE' : 'INACTIVE')),
 });
 

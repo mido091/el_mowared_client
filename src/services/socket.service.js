@@ -1,12 +1,54 @@
+/**
+ * @file socket.service.js
+ * @description Pusher-based real-time communication service singleton.
+ *
+ * Architecture:
+ *  This service wraps the Pusher JS SDK and provides a unified event bus for all
+ *  real-time features in the application (chat, notifications, RFQ updates, etc.).
+ *
+ * Channel types used:
+ *  - `public-marketplace`       – Unauthenticated; product listing updates for all visitors.
+ *  - `private-user.<userId>`    – Authenticated; personal events (notifications, orders, RFQ updates).
+ *  - `private-role.<roleKey>`   – Authenticated; role-scoped events (admin KPIs, vendor feed).
+ *  - `private-conversation.<id>`– Authenticated; per-conversation chat events.
+ *  - `presence-online-users`    – Authenticated; team presence tracking (who's online/offline).
+ *
+ * Event deduplication:
+ *  The service maintains a `dedupeCache` (Map of event keys → timestamps) to prevent
+ *  the same event from being dispatched twice within a 1.5-second window. This protects
+ *  against Pusher delivering the same event across multiple subscribed channels.
+ *
+ * Presence heartbeat:
+ *  A 20-second setInterval pings `/realtime/presence` while connected to ensure the
+ *  server-side presence map stays accurate even if Pusher member events are missed.
+ *
+ * Usage pattern (event-listener style):
+ *   socketService.connect(token);         // On auth login
+ *   socketService.on('new_message', fn);  // Register listener
+ *   socketService.emit('join_conversation', id);
+ *   socketService.off('new_message', fn); // Cleanup on component unmount
+ *   socketService.disconnect();           // On auth logout
+ */
+
 import Pusher from 'pusher-js';
 import api from '@/services/api';
 
+/** Pusher channel name for the global presence list. */
 const PRESENCE_CHANNEL = 'presence-online-users';
+
+/** Prefix for per-user private channels (e.g. 'private-user.42'). */
 const USER_CHANNEL_PREFIX = 'private-user.';
+
+/** Prefix for per-conversation private channels (e.g. 'private-conversation.17'). */
 const CONVERSATION_CHANNEL_PREFIX = 'private-conversation.';
+
+/** Prefix for role-based broadcast channels (e.g. 'private-role.vendor'). */
 const ROLE_CHANNEL_PREFIX = 'private-role.';
+
+/** Public (unauthenticated) channel for marketplace product events. */
 const PUBLIC_MARKETPLACE_CHANNEL = 'public-marketplace';
 
+/** Reads the active locale from localStorage for Accept-Language headers in auth requests. */
 const getCurrentLocale = () => localStorage.getItem('locale') || document.documentElement.lang || 'en';
 
 const parseCurrentUser = () => {
@@ -17,30 +59,48 @@ const parseCurrentUser = () => {
   }
 };
 
+/**
+ * Singleton service managing all Pusher channels and event dispatch.
+ * Consumed via the exported `socketService` instance at the bottom of this file.
+ */
 class SocketService {
   constructor() {
-    this.pusher = null;
-    this.handlers = new Map();
-    this.channelBindings = new Map();
-    this.conversationRefs = new Map();
-    this.conversationChannels = new Map();
-    this.userChannel = null;
-    this.roleChannel = null;
-    this.publicChannel = null;
-    this.presenceChannel = null;
-    this.token = null;
-    this.userId = null;
-    this.userRole = null;
-    this.dedupeCache = new Map();
-    this.presenceHeartbeat = null;
+    this.pusher = null;                          // Active Pusher instance (null when disconnected)
+    this.handlers = new Map();                   // eventName → [callback, ...] listener registry
+    this.channelBindings = new Map();            // 'channelName:eventName' → true (prevents double-bind)
+    this.conversationRefs = new Map();           // conversationId → ref-count (for multi-component joins)
+    this.conversationChannels = new Map();       // conversationId → Pusher channel object
+    this.userChannel = null;                     // private-user.<userId> channel reference
+    this.roleChannel = null;                     // private-role.<roleKey> channel reference
+    this.publicChannel = null;                   // public-marketplace channel reference
+    this.presenceChannel = null;                 // presence-online-users channel reference
+    this.token = null;                           // JWT token for the current Pusher session
+    this.userId = null;                          // Numeric user ID of the authenticated user
+    this.userRole = null;                        // Role string (e.g. 'mowared', 'admin')
+    this.dedupeCache = new Map();               // 'dedupeKey' → timestamp (prevents double dispatch)
+    this.presenceHeartbeat = null;               // setInterval reference for presence ping
   }
 
+  /**
+   * Establishes a Pusher connection and subscribes to all appropriate channels.
+   * Idempotent: safe to call multiple times — reconnects only when the token or user changes.
+   *
+   * Connection strategy:
+   *  1. Same token + same user → already connected, no-op (returns true).
+   *  2. Pusher exists but token/user changed → update context and re-subscribe channels.
+   *  3. New connection needed → disconnect existing, create new Pusher instance.
+   *  4. Missing env vars (VITE_PUSHER_KEY/CLUSTER) → warn and return false (graceful degradation).
+   *
+   * @param {string|null} token - JWT Bearer token for channel authorization.
+   * @returns {boolean} True if connected successfully, false if env config is missing.
+   */
   connect(token) {
     const currentUser = parseCurrentUser();
     const hasPrivateContext = Boolean(token && currentUser?.id);
     const requestedUserId = hasPrivateContext ? Number(currentUser.id) : null;
     const requestedRole = hasPrivateContext ? `${currentUser.role || ''}`.toLowerCase() : null;
 
+    // Guard: already connected with the same credentials — avoid redundant reconnection
     if (
       this.pusher
       && this.token === (token || null)
@@ -49,6 +109,7 @@ class SocketService {
       return true;
     }
 
+    // Guard: Pusher instance exists but credentials need update (e.g. token refresh)
     if (this.pusher) {
       if (!hasPrivateContext) {
         this.subscribePublicChannel();
@@ -63,6 +124,7 @@ class SocketService {
         this.subscribeUserChannel();
         this.subscribeRoleChannel();
         this.subscribePresenceChannel();
+        // Re-subscribe all active conversation channels with new auth context
         Array.from(this.conversationRefs.keys()).forEach((conversationId) => {
           this.subscribeConversationChannel(conversationId);
         });
@@ -70,6 +132,7 @@ class SocketService {
       }
     }
 
+    // Full reconnect: tear down the existing connection and start fresh
     this.disconnect();
     this.token = token || null;
     this.userId = requestedUserId;
@@ -89,6 +152,8 @@ class SocketService {
       forceTLS: true,
       enabledTransports: ['ws', 'wss'],
       channelAuthorization: {
+        // Custom handler posts to our backend's Pusher auth endpoint rather than the default
+        // Pusher auth URL, so we can validate JWTs and enforce role-based channel access.
         customHandler: async ({ socketId, channelName }, callback) => {
           try {
             const response = await api.post('/realtime/pusher/auth', {
@@ -116,8 +181,8 @@ class SocketService {
     this.pusher.connection.bind('connected', () => {
       console.info('[Pusher] Connected');
       if (this.hasAuthenticatedContext) {
-        this.syncPresence('online');
-        this.startPresenceHeartbeat();
+        this.syncPresence('online');         // Immediately announce presence on connect
+        this.startPresenceHeartbeat();       // Keep presence alive every 20s
       }
     });
 
@@ -130,14 +195,17 @@ class SocketService {
       console.error('[Pusher] Connection error', error);
     });
 
+    // Always subscribe to the public channel (available even without auth)
     this.subscribePublicChannel();
 
+    // Private channels require a valid token and user ID
     if (hasPrivateContext) {
       this.subscribeUserChannel();
       this.subscribeRoleChannel();
       this.subscribePresenceChannel();
     }
 
+    // Restore any conversation subscriptions that were active before reconnect
     Array.from(this.conversationRefs.keys()).forEach((conversationId) => {
       this.subscribeConversationChannel(conversationId);
     });
@@ -145,6 +213,13 @@ class SocketService {
     return true;
   }
 
+  /**
+   * Registers an event listener for the given Pusher event name.
+   * Multiple listeners for the same event are supported.
+   *
+   * @param {string}   event    - Pusher event name (e.g. 'new_message', 'rfq.updated').
+   * @param {Function} callback - Handler function called with the event payload.
+   */
   on(event, callback) {
     if (!this.handlers.has(event)) {
       this.handlers.set(event, []);
@@ -152,6 +227,13 @@ class SocketService {
     this.handlers.get(event).push(callback);
   }
 
+  /**
+   * Removes an event listener.
+   * If no callback is provided, all listeners for the event are removed.
+   *
+   * @param {string}   event      - Pusher event name.
+   * @param {Function} [callback] - Specific handler to remove. Omit to clear all.
+   */
   off(event, callback) {
     if (!callback) {
       this.handlers.delete(event);

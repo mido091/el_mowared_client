@@ -1,25 +1,25 @@
 <template>
-  <div class="space-y-8 animate-in fade-in duration-500">
+  <div class="min-w-0 space-y-8 overflow-x-hidden animate-in fade-in duration-500">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
         <h1 class="text-3xl font-black text-foreground uppercase tracking-tighter">{{ t('dashboard.owner.title', 'Platform Control') }}</h1>
         <p class="text-muted-foreground font-medium mt-1">{{ t('dashboard.owner.subtitle', 'Superuser Analytics & Enterprise Governance') }}</p>
       </div>
-      <div class="flex items-center gap-3">
-        <router-link to="/dashboard/admin/products" class="btn-outline btn-sm">
+      <div class="flex w-full flex-wrap items-stretch gap-3 md:w-auto md:items-center">
+        <router-link to="/dashboard/admin/products" class="btn-outline btn-sm w-full justify-center sm:w-auto">
           <Package class="w-4 h-4 me-2" />
           {{ t('admin.products.title', 'Product Moderation') }}
         </router-link>
-        <router-link to="/dashboard/admin/vendors" class="btn-outline btn-sm">
+        <router-link to="/dashboard/admin/vendors" class="btn-outline btn-sm w-full justify-center sm:w-auto">
           <ShieldCheck class="w-4 h-4 me-2" />
           {{ t('admin.vendors', 'Vendors') }}
         </router-link>
-        <router-link to="/dashboard/owner/logs" class="btn-outline btn-sm">
+        <router-link to="/dashboard/owner/logs" class="btn-outline btn-sm w-full justify-center sm:w-auto">
           <FileText class="w-4 h-4 me-2" />
           {{ t('dashboard.owner.viewLogs', 'System Logs') }}
         </router-link>
-        <router-link to="/dashboard/owner/users" class="btn-primary btn-sm">
+        <router-link to="/dashboard/owner/users" class="btn-primary btn-sm w-full justify-center sm:w-auto">
           <Users class="w-4 h-4 me-2" />
           {{ t('admin.manageUsers', 'Manage Users') }}
         </router-link>

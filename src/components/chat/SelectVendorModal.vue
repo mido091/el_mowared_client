@@ -62,6 +62,15 @@
 </template>
 
 <script setup>
+/**
+ * @file SelectVendorModal.vue
+ * @description Modal component used by Users/Admins to browse the vendor directory
+ * and select a vendor to initiate a new DIRECT chat conversation.
+ *
+ * It fetches the public vendor list and provides a localized search filter.
+ * Emits a 'select' event with the chosen vendor object.
+ */
+
 import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Search, ChevronRight } from 'lucide-vue-next';

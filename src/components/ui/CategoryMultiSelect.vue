@@ -340,6 +340,7 @@ onBeforeUnmount(() => {
 
 .dropdown-pop-leave-active {
   transition: all 0.12s ease-in;
+  pointer-events: none;
 }
 
 .dropdown-pop-enter-from {

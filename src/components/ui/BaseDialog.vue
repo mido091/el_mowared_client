@@ -4,7 +4,7 @@
       enter-active-class="transition duration-300 ease-out"
       enter-from-class="opacity-0 scale-95"
       enter-to-class="opacity-100 scale-100"
-      leave-active-class="transition duration-200 ease-in"
+      leave-active-class="transition duration-200 ease-in pointer-events-none"
       leave-from-class="opacity-100 scale-100"
       leave-to-class="opacity-0 scale-95"
     >
@@ -14,9 +14,8 @@
         role="dialog"
         aria-modal="true"
       >
-        <!-- Backdrop -->
         <div 
-          class="app-backdrop transition-opacity" 
+          class="absolute inset-0 bg-slate-900/40 transition-opacity" 
           @click="handleCancel"
         ></div>
 

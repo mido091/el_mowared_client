@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-4">
+  <div class="min-w-0 space-y-4">
     <!-- Header/Filters -->
     <div v-if="hasFilters" class="list-toolbar rounded-[1.75rem]">
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="relative w-full max-w-xl flex-1">
+      <div class="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div class="relative w-full min-w-0 max-w-xl flex-1">
         <Search class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input 
           v-model="search" 
@@ -19,10 +19,10 @@
     </div>
 
     <!-- Table -->
-    <div class="list-shell overflow-visible">
+    <div class="list-shell min-w-0 overflow-visible">
       <div
         v-if="responsive && isMobile"
-        class="space-y-3 p-3 sm:p-4"
+        class="space-y-3 p-2 sm:p-4"
       >
         <template v-if="loading">
           <div
@@ -57,9 +57,9 @@
           <article
             v-for="item in processedItems"
             :key="item.id"
-            class="list-card group"
+            class="list-card group overflow-hidden"
           >
-            <div class="flex items-start gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div class="min-w-0 flex-1">
                 <p
                   v-if="mobileTitleColumn?.label"
@@ -76,7 +76,7 @@
 
               <div
                 v-if="mobileActionsColumn"
-                class="shrink-0"
+                class="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end"
               >
                 <slot :name="`cell-${mobileActionsColumn.key}`" :item="item">
                   {{ item[mobileActionsColumn.key] }}
@@ -92,7 +92,7 @@
               <div
                 v-for="col in mobileDetailColumns"
                 :key="col.key"
-                class="rounded-2xl border border-border/70 bg-background/70 p-3"
+                class="min-w-0 rounded-2xl border border-border/70 bg-background/70 p-3"
               >
                 <p
                   v-if="col.label"
@@ -100,7 +100,7 @@
                 >
                   {{ col.label }}
                 </p>
-                <div class="mt-2 text-sm font-semibold text-foreground">
+                <div class="mt-2 min-w-0 break-words text-sm font-semibold text-foreground">
                   <slot :name="`cell-${col.key}`" :item="item">
                     {{ item[col.key] }}
                   </slot>
@@ -114,7 +114,7 @@
       <div
         v-else
         :class="[
-          'w-full transition-all duration-300',
+          'w-full min-w-0 transition-all duration-300',
           allowOverflow ? 'overflow-visible' : 'overflow-x-auto'
         ]"
       >
@@ -171,12 +171,12 @@
       </div>
 
       <!-- Pagination -->
-      <div v-if="totalPages > 1" class="flex flex-col items-center justify-between gap-4 border-t border-border bg-muted/20 px-4 py-4 sm:flex-row sm:px-6">
-        <p class="text-[10px] text-muted-foreground font-black uppercase tracking-widest order-2 sm:order-1">
+      <div v-if="totalPages > 1" class="flex flex-col items-center justify-between gap-4 border-t border-border bg-muted/20 px-3 py-4 sm:flex-row sm:px-6">
+        <p class="order-2 text-center text-[10px] text-muted-foreground font-black uppercase tracking-widest sm:order-1 sm:text-start">
           {{ t('common.showing') }} {{ startRange }} - {{ endRange }} {{ t('common.of') }} {{ totalCount || items.length }}
         </p>
         
-        <div class="flex items-center gap-1 order-1 sm:order-2">
+        <div class="order-1 flex max-w-full items-center gap-1 overflow-x-auto sm:order-2">
           <!-- Previous -->
           <BaseButton 
             variant="outline" 

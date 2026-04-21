@@ -1,45 +1,97 @@
+/**
+ * @file rfqStore.js
+ * @description Pinia store managing all Request For Quotation (RFQ) state for the frontend.
+ *
+ * Responsibilities:
+ *  - Fetching and caching RFQ data for buyers (public list), admins (all RFQs), and vendors (feed).
+ *  - Performing mutations (create, submit offer, accept, decline, complete, delete).
+ *  - Publishing cross-tab invalidation signals via `domainSync` so that all open browser
+ *    windows refresh their data without requiring a page reload.
+ *
+ * Caching strategy (stale-while-revalidate):
+ *  - `mode: 'cached'`     – Returns data from memory if fresh (< 30s old), else fetches.
+ *  - `mode: 'revalidate'` – Returns current data immediately; triggers background refresh if stale.
+ *  - `mode: 'fresh'`      – Always fetches regardless of cache age.
+ *
+ * Cross-tab sync:
+ *  `createDomainSync('rfqs')` wraps localStorage events so any mutation in one tab
+ *  triggers a background re-fetch in all other open tabs.
+ */
+
 import { defineStore } from 'pinia';
 import api from '@/services/api';
 import { getApiCollection, getApiData } from '@/utils/apiResponse';
 import { normalizeError } from '@/utils/errorHandler';
 import { createDomainSync } from '@/utils/domainSync';
 
+/** Cross-tab synchronization channel for the 'rfqs' domain. */
 const rfqSync = createDomainSync('rfqs');
+
+/** How long (ms) fetched data is considered fresh before triggering a background refresh. */
 const STALE_MS = 30 * 1000;
 
+/**
+ * Returns true if the given timestamp is within the freshness window.
+ * @param {number} timestamp - Unix ms timestamp of the last fetch.
+ * @returns {boolean}
+ */
 const isFreshEnough = (timestamp) => Number(timestamp || 0) > 0 && (Date.now() - Number(timestamp)) < STALE_MS;
 
 export const useRfqStore = defineStore('rfq', {
   state: () => ({
-    rfqs: [],
-    adminRfqs: [],
-    feed: {},
-    feedOrder: [],
-    activeTab: 'active',
+    rfqs: [],          // Buyer's personal RFQ list (GET /rfq)
+    adminRfqs: [],     // Admin view of all RFQs (GET /rfq - admin context)
+    feed: {},          // Normalized map: { [rfqId]: rfqObject } for O(1) lookups
+    feedOrder: [],     // Ordered array of IDs preserving server sort order
+    activeTab: 'active',  // Currently selected tab on the vendor leads dashboard
+
+    // Request lifecycle flags
     loading: false,
     submitting: false,
     success: false,
     error: null,
     fieldErrors: {},
+
+    // Cache timestamps (Unix ms) for stale-while-revalidate logic
     lastFetchedPublic: 0,
     lastFetchedAdmin: 0,
     lastFetchedFeed: 0,
+
+    // Cross-tab sync revision counter (incremented on every mutation)
     revision: 0,
-    syncReady: false
+    syncReady: false   // Prevents registering listeners more than once
   }),
 
   getters: {
+    /** All leads from the vendor feed in server sort order. */
     allLeads: (state) => state.feedOrder.map((id) => state.feed[id]).filter(Boolean),
+
+    /**
+     * RFQs the vendor has not yet responded to (no offer, chat, or decline).
+     * These represent actionable new opportunities.
+     */
     availableOpportunities: (state) => state.feedOrder
       .map((id) => state.feed[id])
       .filter((r) => r && !Number(r.vendor_has_offer || 0) && !Number(r.vendor_has_chat || 0) && !Number(r.vendor_has_declined || 0)),
+
+    /** RFQs where the vendor has already submitted an offer or started a chat. */
     acceptedOpportunities: (state) => state.feedOrder
       .map((id) => state.feed[id])
       .filter((r) => r && (Number(r.vendor_has_offer || 0) || Number(r.vendor_has_chat || 0))),
+
+    /** Fresh leads that are visible in the vendor marketplace (BROADCASTED or OPEN). */
     newLeads: (state) => state.feedOrder.map((id) => state.feed[id]).filter((r) => r && (r.status === 'BROADCASTED' || r.status === 'OPEN')),
+
+    /** RFQs currently in negotiation or offer-submitted state. */
     activeNegotiations: (state) => state.feedOrder.map((id) => state.feed[id]).filter((r) => r && (r.status === 'NEGOTIATING' || r.status === 'OFFERED')),
+
+    /** RFQs that were rejected or cancelled (lost opportunities). */
     lostLeads: (state) => state.feedOrder.map((id) => state.feed[id]).filter((r) => r && (r.status === 'REJECTED' || r.status === 'CANCELED')),
+
+    /** RFQs that passed their expiration date without being acted upon. */
     expiredLeads: (state) => state.feedOrder.map((id) => state.feed[id]).filter((r) => r && r.status === 'EXPIRED'),
+
+    /** Successfully closed RFQs (COMPLETED or ACCEPTED). */
     wonLeads: (state) => state.feedOrder.map((id) => state.feed[id]).filter((r) => r && (r.status === 'COMPLETED' || r.status === 'ACCEPTED'))
   },
 

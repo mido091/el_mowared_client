@@ -37,11 +37,20 @@
 </template>
 
 <script setup>
+/**
+ * @file PurchaseTimeline.vue
+ * @description Presentational component displaying the chronological fulfillment
+ * status of a purchase order (Order Lifecycle).
+ *
+ * It maps the order's DB status enum (PENDING, PROCESSING, SHIPPED, COMPLETED)
+ * to a visual vertical stepper, reading timestamps to mark events as completed.
+ */
+
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { 
-  CheckCircle2, Package, Truck, 
-  CreditCard, Clock, MessageSquare 
+import {
+  CheckCircle2, Package, Truck,
+  CreditCard, Clock, MessageSquare
 } from 'lucide-vue-next';
 
 const props = defineProps({

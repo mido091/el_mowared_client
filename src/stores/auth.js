@@ -1,34 +1,71 @@
+/**
+ * @file auth.js
+ * @description Pinia store for authentication state management.
+ *
+ * State persistence:
+ *  - JWT token and user object are persisted in localStorage because the app
+ *    uses Bearer token authentication (not HTTP-only cookies).
+ *  - On page load, the state is hydrated from localStorage. If an in-memory
+ *    user is missing but a token exists, `init()` calls /auth/me to restore it.
+ *
+ * Role enumeration (lowercase on the client):
+ *  - 'user'    → Regular buyer
+ *  - 'mowared' → Vendor/Supplier
+ *  - 'admin'   → Platform administrator
+ *  - 'owner'   → Highest privilege (system owner)
+ *
+ * OTP flows supported:
+ *  - Registration: User → OTP → account activated
+ *  - Vendor registration: Vendor → OTP → pending admin approval
+ *  - Password reset: Email → OTP → reset token → new password
+ */
+
 import { defineStore } from 'pinia';
 import api from '@/services/api';
 import { getApiData } from '@/utils/apiResponse';
 import { normalizeError } from '@/utils/errorHandler';
 
+// Auth state is persisted in localStorage because the app uses bearer tokens rather than cookie sessions.
 export const useAuthStore = defineStore('auth', {
   state: () => {
+    // Restore persisted session from localStorage on first load.
     const user = JSON.parse(localStorage.getItem('user')) || null;
+    // Normalize avatar field for older records stored before the 'avatar' alias was introduced.
     if (user && user.profile_image_url && !user.avatar) {
       user.avatar = user.profile_image_url;
     }
     return {
-      user,
-      token: localStorage.getItem('token') || null,
-      loading: false,
-      error: null,
-      errorCode: null,
-      fieldErrors: {},
-      success: false,
+      user,                                          // Full user object (null when logged out)
+      token: localStorage.getItem('token') || null,  // JWT Bearer token
+      loading: false,     // True while any auth API call is in flight
+      error: null,        // Localized error message string (bilingual object)
+      errorCode: null,    // Machine-readable error code (e.g. 'RATE_LIMITED')
+      fieldErrors: {},    // Per-field validation errors from the backend
+      success: false,     // Generic operation success flag
     };
   },
   
   getters: {
+    /** True if a JWT token exists in state (does not validate expiry). */
     isAuthenticated: (state) => !!state.token,
+
+    /** True if the logged-in user is a vendor (Mowared). */
     isVendor: (state) => state.user?.role === 'mowared',
+
+    /** True if the logged-in user has admin or owner privileges. */
     isAdmin: (state) => ['admin', 'owner'].includes(state.user?.role),
+
+    /**
+     * Best-effort display name for the current user.
+     * Preference: first+last > company_name > fallback 'User'.
+     */
     userName: (state) => (state.user?.first_name ? `${state.user.first_name} ${state.user.last_name}` : null) || state.user?.company_name || 'User',
   },
   
   actions: {
     async init() {
+      // Session restoration is intentionally lazy. We only hit /auth/me when a token exists
+      // but the in-memory user object has not been rebuilt yet.
       if (this.token && !this.user) {
         await this.fetchMe();
       }
@@ -107,6 +144,7 @@ export const useAuthStore = defineStore('auth', {
         const payload = getApiData(response) || {};
         const { user, token } = payload;
         
+        // Buyers receive a token immediately after verification, while vendors may remain pending approval.
         if (token && user) {
           this.setUser(user, token);
         }
@@ -230,6 +268,7 @@ export const useAuthStore = defineStore('auth', {
           localStorage.setItem('user', JSON.stringify(user));
         }
       } catch (err) {
+        // If the backend rejects the token, the frontend clears local state and returns to a clean login flow.
         this.logout();
       } finally {
         this.loading = false;
@@ -259,7 +298,7 @@ export const useAuthStore = defineStore('auth', {
       this.token = null;
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      // Use event instead of direct location to allow clean cleanup
+      // The logout event lets realtime/notification modules clean up subscriptions before navigation.
       window.dispatchEvent(new CustomEvent('app:logout'));
       window.location.href = '/login';
     },

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-background pb-20">
+  <div class="min-h-screen overflow-x-hidden bg-background pb-20">
     <section class="relative min-h-[520px] overflow-hidden bg-[#0A1020] pt-10 pb-16 lg:min-h-[580px] lg:pb-24">
       <!-- Unified dark premium background -->
       <div class="pointer-events-none absolute inset-0 bg-hero-mesh opacity-60 mix-blend-screen"></div>
@@ -90,8 +90,8 @@
     </section>
 
     <div class="container-wide relative z-20 -mt-12 mb-16">
-      <div class="animate-scale-in rounded-3xl border border-slate-200/90 bg-white p-6 shadow-[0_22px_54px_-30px_rgba(15,23,42,0.32)] lg:p-8">
-        <div class="grid grid-cols-2 gap-8 divide-x divide-border/50 rtl:divide-x-reverse lg:grid-cols-4">
+      <div class="animate-scale-in rounded-3xl border border-slate-200/90 bg-white p-4 sm:p-6 shadow-[0_22px_54px_-30px_rgba(15,23,42,0.32)] lg:p-8">
+        <div class="grid grid-cols-1 gap-6 divide-y divide-border/50 rtl:divide-x-reverse sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
             <div
               v-for="(stat, idx) in stats"
               :key="stat.label"
@@ -110,7 +110,7 @@
 
     <div class="container-wide space-y-24">
       <section>
-        <div class="mb-8 flex items-end justify-between">
+        <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div class="mb-2 flex items-center gap-3">
               <span class="h-1 w-8 rounded-full bg-teal-500"></span>
@@ -159,7 +159,7 @@
       </section>
 
       <section ref="featuredSectionRef">
-        <div class="mb-10 flex items-end justify-between">
+        <div class="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div class="mb-2 flex items-center gap-3">
               <span class="h-1 w-8 rounded-full bg-accent"></span>

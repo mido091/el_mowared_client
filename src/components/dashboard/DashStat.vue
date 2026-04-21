@@ -31,6 +31,14 @@
 </template>
 
 <script setup>
+/**
+ * @file DashStat.vue
+ * @description Presentational component for Key Performance Indicators (KPIs).
+ *
+ * Renders a metric card with a large number, an optional trend indicator (up/down %),
+ * and an abstract SVG sparkline at the bottom visualizing the trend direction.
+ */
+
 import { computed } from 'vue';
 import { TrendingUp, TrendingDown } from 'lucide-vue-next';
 import DashCard from './DashCard.vue';

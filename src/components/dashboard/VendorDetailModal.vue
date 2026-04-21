@@ -101,6 +101,15 @@
 </template>
 
 <script setup>
+/**
+ * @file VendorDetailModal.vue
+ * @description Admin modal for reviewing detailed vendor profile information.
+ *
+ * It provides a comprehensive view of a vendor's identity, contact information,
+ * and categories, and emits actions (`verify`, `reject`, `delete`) to allow the
+ * admin to manage the vendor's application lifecycle state.
+ */
+
 import { useI18n } from 'vue-i18n';
 import { X, Package, ShieldCheck, FileText, AlertCircle, Check } from 'lucide-vue-next';
 

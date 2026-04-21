@@ -1,19 +1,14 @@
 <template>
   <div class="flex h-screen overflow-hidden bg-background font-sans transition-colors duration-300">
-    <!-- Sidebar Backdrop (Mobile Only) -->
-    <Transition name="fade">
-      <div v-if="sidebarOpen && isMobile" 
-        class="app-backdrop layer-backdrop lg:hidden"
-        @click="sidebarOpen = false">
-      </div>
-    </Transition>
+    <!-- Sidebar Backdrop (Mobile Only) Removed in favor of v-click-outside -->
 
     <!-- Sidebar -->
     <aside 
+      v-click-outside="() => isMobile && (sidebarOpen = false)"
       :class="[
-        'layer-mobile-nav fixed lg:static inset-y-0 start-0 flex flex-col bg-card border-e border-border transition-all duration-300 ease-spring',
+        'layer-mobile-nav fixed lg:static inset-y-0 start-0 flex max-w-[calc(100vw-1rem)] flex-col overflow-hidden bg-card border-e border-border transition-all duration-300 ease-spring',
         isMobile 
-          ? (sidebarOpen ? 'translate-x-0 w-64' : (locale === 'ar' ? 'translate-x-full w-64' : '-translate-x-full w-64')) 
+          ? (sidebarOpen ? 'translate-x-0 w-64 shadow-2xl' : (locale === 'ar' ? 'translate-x-full w-64' : '-translate-x-full w-64')) 
           : (collapsed ? 'w-20 translate-x-0' : 'w-64 translate-x-0')
       ]"
     >
@@ -44,6 +39,7 @@
             :key="item.name" 
             :to="item.to"
             v-slot="{ isActive }"
+            @click="isMobile && (sidebarOpen = false)"
           >
             <div 
               :class="[
@@ -69,10 +65,10 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col min-w-0 h-screen">
+    <div class="flex-1 flex min-w-0 flex-col h-screen overflow-x-hidden">
       <!-- Topbar -->
-      <header class="layer-header h-16 flex items-center justify-between px-4 sm:px-8 border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 shrink-0">
-        <div class="flex items-center gap-4">
+      <header class="layer-header h-16 flex items-center justify-between gap-3 px-3 sm:px-6 lg:px-8 border-b border-border/50 bg-card/80 backdrop-blur-md sticky top-0 shrink-0">
+        <div class="flex min-w-0 items-center gap-2 sm:gap-4">
           <button @click="isMobile ? (sidebarOpen = !sidebarOpen) : (collapsed = !collapsed)" class="p-2 rounded-lg hover:bg-muted text-foreground transition-colors">
             <Menu v-if="isMobile || !collapsed" class="w-5 h-5" />
             <ChevronRight v-else :class="['w-5 h-5 transition-transform', locale === 'ar' ? 'rotate-180' : '']" />
@@ -86,7 +82,7 @@
           </nav>
         </div>
 
-        <div class="flex items-center gap-2 sm:gap-4">
+        <div class="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <!-- Activity Toggle -->
           <button @click="openActivityDrawer" class="p-2 rounded-lg hover:bg-muted text-foreground/70 transition-colors hidden md:flex" :title="t('dashboard.activity_feed')">
             <TrendingUp class="w-5 h-5" />
@@ -116,10 +112,10 @@
           </button>
 
           <!-- Separator -->
-          <div class="w-px h-6 bg-border mx-1"></div>
+          <div class="hidden h-6 w-px bg-border sm:block"></div>
 
           <!-- User Menu -->
-          <div class="relative">
+          <div class="relative" v-click-outside="() => userMenuOpen = false">
               <div class="flex items-center gap-3 group cursor-pointer" @click="toggleUserMenu">
               <div class="hidden lg:block text-end">
                 <p class="text-sm font-bold text-foreground leading-none">{{ authStore.userName }}</p>
@@ -152,14 +148,13 @@
                 </div>
               </div>
             </Transition>
-            <div v-if="userMenuOpen" @click="userMenuOpen = false" class="fixed inset-0 layer-header bg-transparent"></div>
           </div>
         </div>
       </header>
 
       <!-- Content Area -->
-      <main class="flex-1 overflow-y-auto custom-scrollbar bg-background/50">
-        <div class="p-4 sm:p-8 max-w-7xl mx-auto">
+      <main class="flex-1 overflow-x-hidden overflow-y-auto custom-scrollbar bg-background/50">
+        <div class="mx-auto max-w-7xl min-w-0 px-3 py-4 sm:px-4 sm:py-6 lg:px-8">
           <router-view v-slot="{ Component }">
             <transition name="page" mode="out-in">
               <component :is="Component" />
@@ -171,7 +166,7 @@
 
     <!-- Notification Panel (bell click) -->
     <Transition name="drawer">
-      <div v-if="notifOpen" class="app-drawer-panel layer-drawer fixed inset-y-0 end-0 w-80 flex flex-col max-w-[min(20rem,100vw)]">
+      <div v-if="notifOpen" v-click-outside="() => notifOpen = false" class="app-drawer-panel layer-drawer fixed inset-y-0 end-0 w-80 flex flex-col max-w-[min(20rem,100vw)]">
         <div class="h-16 flex items-center justify-between px-6 border-b border-border">
           <h3 class="font-bold text-foreground uppercase tracking-wider text-sm">{{ t('common.notifications') }}</h3>
           <div class="flex items-center gap-2">
@@ -225,11 +220,10 @@
         </div>
       </div>
     </Transition>
-    <div v-if="notifOpen" @click="notifOpen = false" class="app-backdrop layer-backdrop"></div>
 
     <!-- Activity Feed Drawer -->
     <Transition name="drawer">
-      <div v-if="activityOpen" class="app-drawer-panel layer-drawer fixed inset-y-0 end-0 w-80 flex flex-col max-w-[min(20rem,100vw)]">
+      <div v-if="activityOpen" v-click-outside="() => activityOpen = false" class="app-drawer-panel layer-drawer fixed inset-y-0 end-0 w-80 flex flex-col max-w-[min(20rem,100vw)]">
         <div class="h-16 flex items-center justify-between px-6 border-b border-border">
           <h3 class="font-bold text-foreground uppercase tracking-wider text-sm">{{ t('dashboard.activity_feed') }}</h3>
           <button @click="activityOpen = false" class="p-2 hover:bg-muted rounded-lg transition-colors">
@@ -257,7 +251,6 @@
         </div>
       </div>
     </Transition>
-    <div v-if="activityOpen" @click="activityOpen = false" class="app-backdrop layer-backdrop"></div>
     
     <!-- Admin Floating Chats -->
     <AdminChatPopups v-if="['admin', 'owner'].includes(authStore.user?.role?.toLowerCase())" />
@@ -266,9 +259,33 @@
 
 
 <script setup>
+/**
+ * DashboardLayout provides the authenticated control-panel shell.
+ * It centralizes navigation groups, topbar actions, drawers, and account widgets so
+ * dashboard views can focus on domain-specific content instead of shell mechanics.
+ */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+
+// Simple directive for click-outside
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (event) => {
+      // Don't close if clicking inside the element
+      if (el === event.target || el.contains(event.target)) return;
+      
+      // Execute the provided function
+      binding.value(event);
+    };
+    // Use capture phase to ensure it evaluates before click events on other elements mutate the DOM
+    document.addEventListener('click', el._clickOutside, true);
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutside, true);
+  }
+};
+
 import { 
   Package, LayoutDashboard, ShoppingBag, FileText, 
               MessageSquare, Users, ShieldCheck, Settings,
@@ -319,7 +336,7 @@ const openActivityDrawer = () => {
 
 const currentRouteName = computed(() => {
   const name = route.name?.toString() || '';
-  // Split camelCase and filter out generic dashboard prefixes
+  // Derive a readable fallback breadcrumb from the route name when no explicit translation exists.
   const parts = name.split(/(?=[A-Z])/);
   const relevant = parts.filter(p => !['Dashboard', 'User', 'Vendor', 'Admin', 'Owner'].includes(p));
   return relevant.join('') || 'Dashboard';
@@ -328,7 +345,8 @@ const currentRouteName = computed(() => {
 const navGroups = computed(() => {
   const groups = [];
 
-  // 1. Management Group (Owner/Admin)
+  // Navigation is built from the current role/permission state so one layout can serve
+  // owner, admin, and vendor dashboards without duplicating sidebar templates.
   if (is('owner') || is('admin')) {
     groups.push({
       title: 'admin.management',
@@ -408,7 +426,7 @@ const toggleLang = () => {
   const newLang = locale.value === 'ar' ? 'en' : 'ar';
   locale.value = newLang;
   localStorage.setItem('locale', newLang);
-  // Optional: Update HTML dir for RTL/LTR immediate effect if needed
+  // Update document attributes immediately so direction-sensitive UI flips without a full reload.
   document.documentElement.setAttribute('dir', newLang === 'ar' ? 'rtl' : 'ltr');
   document.documentElement.setAttribute('lang', newLang);
 };
@@ -427,6 +445,17 @@ watch(sidebarOpen, (open) => {
     activityOpen.value = false;
   }
 });
+
+// Close sidebar on route change (mobile) — catches programmatic navigation
+// or any router-link click that bypasses the @click handler.
+watch(
+  () => route.path,
+  () => {
+    if (isMobile.value) {
+      sidebarOpen.value = false;
+    }
+  }
+);
 
 watch(notifOpen, (open) => {
   if (open) {

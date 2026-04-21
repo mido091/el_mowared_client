@@ -29,6 +29,14 @@
 </template>
 
 <script setup>
+/**
+ * @file RfqItemsList.vue
+ * @description Presentational component for rendering a normalized array of RFQ line items.
+ *
+ * It iterates over the structured `rtq_items` JSON array and displays each item
+ * in a standardized card format. Uses dynamic props for localized labels.
+ */
+
 const props = defineProps({
   items: {
     type: Array,
